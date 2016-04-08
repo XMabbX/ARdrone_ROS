@@ -1,0 +1,13 @@
+<launch>
+	
+	<group ns="Action_launch">
+		<node pkg="intros_action_example" type="action_client_node" name="client" output="screen">
+		</node>
+		<node pkg="intros_action_example" type="action_server_node" name="server" output="screen">
+			<remap from="action_server/fibonacci" to="action_client/fibonacci"/>
+		</node>
+
+	</group>
+	
+	
+</launch>
