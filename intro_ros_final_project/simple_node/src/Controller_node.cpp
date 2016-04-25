@@ -50,7 +50,7 @@ int main(int argc, char **argv)
   ros::ServiceClient camera = n.serviceClient <std_srvs::Empty> ("/ardrone/togglecam");
   std_srvs::Empty camera_srv;
 
-  ros::Subscriber sub = n.subscribe("ar_pose_marker_bottom", 1000, chatterCallback);
+  ros::Subscriber sub = n.subscribe("ar_pose_marker", 1000, chatterCallback);
 
   ROS_INFO("--Controller node");
 
