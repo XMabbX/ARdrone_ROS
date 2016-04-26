@@ -27,7 +27,8 @@ config.toggle_cam=false;
 void chatterCallback(const ar_pose::ARMarker msg)
 {
 
-  ROS_INFO("Pose: %f %f %f",
+  ROS_INFO("Pose: %f %f %f", //This is the marker floor position respect robot
+                            // cameracd
 	msg.pose.pose.position.x,
   msg.pose.pose.position.y,
   msg.pose.pose.position.z);
