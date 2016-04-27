@@ -29,10 +29,10 @@ config.toggle_cam=false;
 cont_switch=config.cont_switch;
 
 if(cont_switch){
-  xr=config.x_ref;
+  xr=config.x_ref; // posicions de referncia
   yr=config.y_ref;
   zr=config.z_ref;
-  kp=config.kp;
+  kp=config.kp;  // valors del controlador
   ki=config.ki;
 
 
@@ -108,19 +108,19 @@ int main(int argc, char **argv)
 
     if(cont_switch){
 
-      ex=(xp-xr);
+      ex=(xp-xr); // calcul del errror respecte la referencia funciona
       ey=(yp-yr);
       ez=(zp-zr);
 
-      int_ex += ex*0.1;
+      int_ex += ex*0.1; // integracio
       int_ey += ey*0.1;
       int_ez += ez*0.1;
 
-      vx=-kp*(ey)-ki*(int_ey);
+      vx=-kp*(ey)-ki*(int_ey); // integracio no funciona be
       vy=-kp*(ex)-ki*(-int_ex);
       vz=-kp*(ez)-ki*(int_ez);
 
-      cmd_msg.linear.x = vx;
+      cmd_msg.linear.x = vx; // preparar missatge de les velocitats
       cmd_msg.linear.y = vy;
       cmd_msg.linear.z = vz;
 
@@ -131,7 +131,7 @@ int main(int argc, char **argv)
 
 
     }else{
-      if(cmd_msg.linear.x!=0)
+      if(cmd_msg.linear.x!=0)  // sino esta el control actiu porta totes les velocitats a 0
       cmd_msg.linear.x = 0;
       cmd_msg.linear.y = 0;
       cmd_msg.linear.z = 0;
