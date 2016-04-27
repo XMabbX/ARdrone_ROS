@@ -2,7 +2,9 @@
 #include "std_msgs/Empty.h"
 #include "std_srvs/Empty.h"
 #include "ar_pose/ARMarker.h"
-#include <geometry_msgs/Twist.h>
+#include "geometry_msgs/Twist.h"
+#include "sensor_msgs/Range.h"
+
 
 
 #include <dynamic_reconfigure/server.h>
@@ -11,6 +13,8 @@
 bool go_takeoff, go_land, change_cam,cont_switch;
 
 float xp, yp, zp, kp, ki, vx, vy, vz, xr, yr, zr, ex, ey, ez, int_ex,int_ey,int_ez;
+
+float sonar_h;
 
 void callback(simple_node::dynparamsConfig &config, uint32_t level) {
 
@@ -46,13 +50,19 @@ void chatterCallback(const ar_pose::ARMarker msg)
 
   xp=msg.pose.pose.position.x;
   yp=msg.pose.pose.position.y;
-  zp=msg.pose.pose.position.z;
+  //zp=msg.pose.pose.position.z;
 
-  ROS_INFO("Pose: %f %f %f", //This is the marker floor position respect robot
+  ROS_INFO("Pose: %f %f", //This is the marker floor position respect robot
                             // cameracd
-  xp,yp,zp);
+  xp,yp);
 
 }
+
+void sonarCallback(const sensor_msgs::Range msg)
+{
+  zp=msg.range;
+}
+
 
 int main(int argc, char **argv)
 {
@@ -73,7 +83,10 @@ int main(int argc, char **argv)
   std_srvs::Empty camera_srv;
 
   ros::Subscriber sub = n.subscribe("ar_pose_marker", 1000, chatterCallback);
-  int_ex=0;
+  ros::Subscriber sonar_sub = n.subscribe("/sonar_height", 1000, sonarCallback);
+
+
+  int_ex=0; //incialitza integracio
   int_ey=0;
   int_ez=0;
 
