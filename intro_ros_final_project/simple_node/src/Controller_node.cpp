@@ -4,11 +4,14 @@
 #include "ar_pose/ARMarker.h"
 #include "geometry_msgs/Twist.h"
 
+
 #include <dynamic_reconfigure/server.h>
 #include <simple_node/dynparamsConfig.h>
 
 bool go_takeoff, go_land, change_cam;
 float xp, yp, zp, kp=2;
+
+float ex, ey, ez;
 
 void callback(simple_node::dynparamsConfig &config, uint32_t level) {
 
@@ -33,7 +36,15 @@ void chatterCallback(const ar_pose::ARMarker msg)
   zp=msg.pose.pose.position.z;
 
   ROS_INFO("Pose: %f %f %f", //This is the marker floor position respect robot
+<<<<<<< HEAD
                   xp,yp,zp); // cameracd
+=======
+                            // cameracd
+	msg.pose.pose.position.x,
+  msg.pose.pose.position.y,
+  msg.pose.pose.position.z);
+
+>>>>>>> 2cfd372c719f65d5aa582090603bd3232407aeca
 }
 
 int main(int argc, char **argv)

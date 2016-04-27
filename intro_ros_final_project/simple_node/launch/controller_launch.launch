@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
 
-<node name="Controller_node" pkg="simple_node" type="Controller_node" respawn="false" output="screen">
+<node name="Controller_node" pkg="simple_node" type="Controller_node_marc" respawn="false" output="screen">
 </node>
 
 <node name="Reconfigure" pkg="rqt_reconfigure" type="rqt_reconfigure" respawn="false">
