@@ -2,14 +2,15 @@
 #include "std_msgs/Empty.h"
 #include "std_srvs/Empty.h"
 #include "ar_pose/ARMarker.h"
+#include "geometry_msg::Twist.h"
 
 
 #include <dynamic_reconfigure/server.h>
 #include <simple_node/dynparamsConfig.h>
 
-bool go_takeoff, go_land, change_cam;
+bool go_takeoff, go_land, change_cam,cont_switch;
 
-float ex, ey, ez;
+float xp, yp, xp, kp, vx, vy, vz;
 
 void callback(simple_node::dynparamsConfig &config, uint32_t level) {
 
@@ -25,16 +26,20 @@ change_cam=config.toggle_cam;
 if(change_cam)
 config.toggle_cam=false;
 
+cont_switch=config.cont_switch;
+
 }
 
 void chatterCallback(const ar_pose::ARMarker msg)
 {
 
+  xp=msg.pose.pose.position.x;
+  yp=msg.pose.pose.position.y;
+  zp=msg.pose.pose.position.z;
+
   ROS_INFO("Pose: %f %f %f", //This is the marker floor position respect robot
                             // cameracd
-	msg.pose.pose.position.x,
-  msg.pose.pose.position.y,
-  msg.pose.pose.position.z);
+  xp,yp,zp);
 
 }
 
@@ -46,6 +51,7 @@ int main(int argc, char **argv)
 
   ros::Publisher takeoff_pub = n.advertise<std_msgs::Empty>("ardrone/takeoff", 1000);
   ros::Publisher land_pub = n.advertise<std_msgs::Empty>("ardrone/land", 1000);
+  ros::Publisher vel_pub = n.advertise<geometry_msg::Twist>("/cmd_vel",1000);
 
   dynamic_reconfigure::Server<simple_node::dynparamsConfig> server;
   dynamic_reconfigure::Server<simple_node::dynparamsConfig>::CallbackType f;
@@ -63,6 +69,7 @@ int main(int argc, char **argv)
   while (ros::ok())
   {
     std_msgs::Empty msg;
+    geometry_msg::Twist cmd_msg;
 
 //Take off the drone.
     if(go_takeoff)
@@ -83,6 +90,23 @@ int main(int argc, char **argv)
       change_cam = false;
 
     }
+
+    if(cont_switch){
+      vx=-kp*(-yp);
+      vy=-kp*(-xp);
+
+      cmd_msg.linear.x = vx;
+      cmd_msg.linear.y = vy;
+
+
+      ROS_INFO("Vel: %f %f", vx, vy);
+      vel_pub.publish(cmd_msg);
+
+
+
+
+    }
+
 
     ros::spinOnce();
     loop_rate.sleep();
