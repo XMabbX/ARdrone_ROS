@@ -25,6 +25,7 @@ float ex_bot, ey_bot, ez_bot, int_ex_bot, int_ey_bot, int_ez_bot;
 tfScalar roll_bot, yaw_bot,pitch_bot;
 float rollr_bot=0, yawr_bot=1, pitchr_bot=0;
 float eroll_bot, eyaw_bot, epitch_bot;
+float kp_yaw=0.1;
 
 float vyaw;
 
@@ -62,6 +63,9 @@ void callback(simple_node::dynparamsConfig &config, uint32_t level) {
     yr_bot=config.y_ref;
     yr_front=config.y_ref;
     zr=config.z_ref;
+    yawr_bot = config.yaw_ref;
+
+
     kp_bot=config.kp;  // valors del controlador bot
     ki_bot=config.ki;
     kd_bot=config.kd;
@@ -219,16 +223,16 @@ int main(int argc, char **argv)
       //control orientacio
 
       //exo_bot=(xo_bot-xor_bot); // calcul del errror respecte la referencia funciona
-      eyaw_bot=(yaw_bot-yawr_bot);
+      eyaw_bot=(yawr_bot-yaw_bot);
 
       ROS_INFO("Error: %f",eyaw_bot);
       //ezo_bot=(zo_bot-zor_bot);
 
-      vyaw=-kp_bot*(eyaw_bot);//-ki_bot*(int_eyaw_bot)-kd_bot*(ey_bot-ey_a)/0.1; // integracio no funciona be
+      vyaw=-kp_yaw*(eyaw_bot);//-ki_bot*(int_eyaw_bot)-kd_bot*(ey_bot-ey_a)/0.1; // integracio no funciona be
       //vay=-kp_bot*(ex_bot)-ki_bot*(int_ex_bot)-kd_bot*(ex_bot-ex_a)/0.1;
       //vaz=-kp_bot*(ez_bot)-ki_bot*(int_ez_bot)-kd_bot*(ez_bot-ez_a)/0.1;
 
-      cmd_msg.angular.y=vyaw;
+      cmd_msg.angular.z=vyaw;
       ROS_INFO("Velocitat: %f",eyaw_bot);
 
     //  ROS_INFO("Error: %f %f %f", ex_bot, ey_bot, ez_bot);
