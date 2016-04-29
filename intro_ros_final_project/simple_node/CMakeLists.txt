@@ -10,6 +10,8 @@ COMPONENTS
   roscpp
   rospy
   std_msgs
+  tf
+  geometry_msgs
 )
 
 generate_dynamic_reconfigure_options(cfg/dynparams.cfg)
@@ -86,7 +88,7 @@ generate_dynamic_reconfigure_options(cfg/dynparams.cfg)
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES intro_ros
-CATKIN_DEPENDS roscpp rospy
+CATKIN_DEPENDS roscpp rospy tf
 DEPENDS system_lib
 )
 

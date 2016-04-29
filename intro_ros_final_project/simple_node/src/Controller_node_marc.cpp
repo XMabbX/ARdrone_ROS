@@ -4,6 +4,9 @@
 #include "ar_pose/ARMarkers.h"
 #include "geometry_msgs/Twist.h"
 #include "sensor_msgs/Range.h"
+//#include <geometry_msgs/PointStamped.h>
+#include <tf/transform_listener.h>
+#include <tf/LinearMath/Matrix3x3.h>
 #include <vector>
 
 
@@ -17,6 +20,13 @@ float xp_bot, yp_bot, zp;
 float kp_bot, ki_bot, kd_bot;
 float xr_bot, yr_bot, zr;
 float ex_bot, ey_bot, ez_bot, int_ex_bot, int_ey_bot, int_ez_bot;
+
+
+tfScalar roll_bot, yaw_bot,pitch_bot;
+float rollr_bot=0, yawr_bot=1, pitchr_bot=0;
+float eroll_bot, eyaw_bot, epitch_bot;
+
+float vyaw;
 
 float vx, vy, vz;
 
@@ -76,6 +86,16 @@ void chatterCallback(const ar_pose::ARMarkers::ConstPtr& msg)
       if(ar_pose_marker.id==0){
         xp_bot=ar_pose_marker.pose.pose.position.x;
         yp_bot=ar_pose_marker.pose.pose.position.y;
+
+        tf::Quaternion q(ar_pose_marker.pose.pose.orientation.x,
+      			ar_pose_marker.pose.pose.orientation.y,
+      			ar_pose_marker.pose.pose.orientation.z,
+      			ar_pose_marker.pose.pose.orientation.w);
+
+      	tf::Matrix3x3 m(q);
+      	m.getRPY(roll_bot,pitch_bot,yaw_bot);
+
+
       }else if(ar_pose_marker.id==1){
         xp_front=ar_pose_marker.pose.pose.position.x;
         yp_front=ar_pose_marker.pose.pose.position.y;
@@ -86,10 +106,10 @@ void chatterCallback(const ar_pose::ARMarkers::ConstPtr& msg)
   //xp=msg.markers.pose.pose.position.x;
   //yp=msg.markers.pose.pose.position.y;
   //zp=msg.pose.pose.position.z;
-
-  ROS_INFO("Pose: %f %f %d", //This is the marker floor position respect robot
+  ROS_INFO("Orientacio %f %f %f",roll_bot,pitch_bot,yaw_bot);
+//  ROS_INFO("Pose: %f %f %d", //This is the marker floor position respect robot
                             // cameracd
-  xp_bot,yp_bot,ar_pose_marker.id);
+  //xp_bot,yp_bot,ar_pose_marker.id);
 
 }
 
@@ -98,12 +118,35 @@ void sonarCallback(const sensor_msgs::Range msg)
   zp=msg.range;
 }
 
+//void transformPoint( const tf::TransformListener& listener){
+
+//geometry_msgs::PointStamped bot_cam_point;
+//bot_cam_point.header.frame_id = "ardrone_base_bottomcam";
+
+//bot_cam_point.header.stamp = ros::Time();
+
+//bot_cam_point.point.x=  0;
+//bot_cam_point.point.y=  0;
+//bot_cam_point.point.z=  0;
+
+
+//geometry_msgs::PointStamped base_point;
+
+//listener.transformPoint("base_link", bot_cam_point, base_point);
+
+//ROS_INFO("transformada: %f %f %f", base_point.point.x, base_point.point.y, base_point.point.z);
+
+//}
+
+
 
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "Controller_node_marc");
   ros::NodeHandle n;
   ros::Rate loop_rate(10);
+
+  //tf::TransformListener listener(ros::Duration(10),1);
 
   ros::Publisher takeoff_pub = n.advertise<std_msgs::Empty>("ardrone/takeoff", 1000);
   ros::Publisher land_pub = n.advertise<std_msgs::Empty>("ardrone/land", 1000);
@@ -120,6 +163,7 @@ int main(int argc, char **argv)
   ros::Subscriber sub = n.subscribe("ar_pose_marker", 1000, chatterCallback);
   ros::Subscriber sonar_sub = n.subscribe("/sonar_height", 1000, sonarCallback);
 
+  //ros::Timer timer = n.createTimer(ros::Duration(0.1), boost::bind(&transformPoint, boost::ref(listener)));
 
   int_ex_bot=0; //incialitza integracio
   int_ey_bot=0;
@@ -172,14 +216,29 @@ int main(int argc, char **argv)
       cmd_msg.linear.y = vy;
       cmd_msg.linear.z = vz;
 
+      //control orientacio
 
-      ROS_INFO("Error: %f %f %f", ex_bot, ey_bot, ez_bot);
+      //exo_bot=(xo_bot-xor_bot); // calcul del errror respecte la referencia funciona
+      eyaw_bot=(yaw_bot-yawr_bot);
+
+      ROS_INFO("Error: %f",eyaw_bot);
+      //ezo_bot=(zo_bot-zor_bot);
+
+      vyaw=-kp_bot*(eyaw_bot);//-ki_bot*(int_eyaw_bot)-kd_bot*(ey_bot-ey_a)/0.1; // integracio no funciona be
+      //vay=-kp_bot*(ex_bot)-ki_bot*(int_ex_bot)-kd_bot*(ex_bot-ex_a)/0.1;
+      //vaz=-kp_bot*(ez_bot)-ki_bot*(int_ez_bot)-kd_bot*(ez_bot-ez_a)/0.1;
+
+      cmd_msg.angular.y=vyaw;
+      ROS_INFO("Velocitat: %f",eyaw_bot);
+
+    //  ROS_INFO("Error: %f %f %f", ex_bot, ey_bot, ez_bot);
       //ROS_INFO("Vel: %f %f %f", vx,vy,vz);
       vel_pub.publish(cmd_msg);
       // We save the previous error
       ex_a = ex_bot;
       ey_a = ey_bot;
       ez_a = ez_bot;
+
 
     }else{
       if(cmd_msg.linear.x!=0)  // sino esta el control actiu porta totes les velocitats a 0
