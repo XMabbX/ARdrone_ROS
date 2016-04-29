@@ -16,21 +16,27 @@
 
 bool go_takeoff, go_land, change_cam, cont_bot, cont_front;
 
+float tsample=0.1;
+
+// Bottom variables
 float xp_bot, yp_bot, zp;
-float kp_bot, ki_bot, kd_bot;
-float xr_bot, yr_bot, zr;
-float ex_bot, ey_bot, ez_bot, int_ex_bot, int_ey_bot, int_ez_bot;
+float kp_bot, ki_bot, kd_bot; // Variables PID Cam_bottom control
+float xr_bot, yr_bot, zr; // Reference bottom
+float ex_bot, ey_bot, ez_bot, int_ex_bot, int_ey_bot, int_ez_bot; // errors
 
-
+// Orientacion variables
 tfScalar roll_bot, yaw_bot,pitch_bot;
 float rollr_bot=0, yawr_bot=1, pitchr_bot=0;
 float eroll_bot, eyaw_bot, epitch_bot;
-float kp_yaw=0.1;
+float kp_yaw=0.2, ki_yaw=0, kd_yaw=0;
+float int_eyaw=0; // Accumulated error
+float eyaw_a=0; // Error anterior
 
 float vyaw;
 
 float vx, vy, vz;
 
+// Front variables
 float xp_front, yp_front;
 float kp_front, ki_front, kd_front;
 float xr_front, yr_front;
@@ -74,6 +80,10 @@ void callback(simple_node::dynparamsConfig &config, uint32_t level) {
     ki_front=config.ki;
     kd_front=config.kd;
 
+    kp_yaw=config.kp_yaw;
+    ki_yaw=config.ki_yaw;
+    kd_yaw=config.kd_yaw;
+
 
   }
 
@@ -88,9 +98,11 @@ void chatterCallback(const ar_pose::ARMarkers::ConstPtr& msg)
   for(i=0;i<msg->markers.size();i++){
       ar_pose_marker = msg->markers.at(i);
       if(ar_pose_marker.id==0){
+        // Position respect bottom marker
         xp_bot=ar_pose_marker.pose.pose.position.x;
         yp_bot=ar_pose_marker.pose.pose.position.y;
 
+        // Transform quaternions to roll pitch and yaw
         tf::Quaternion q(ar_pose_marker.pose.pose.orientation.x,
       			ar_pose_marker.pose.pose.orientation.y,
       			ar_pose_marker.pose.pose.orientation.z,
@@ -202,19 +214,20 @@ int main(int argc, char **argv)
 
     }
 
+    // Create states machine
     if(cont_bot){
 
       ex_bot=(xp_bot-xr_bot); // calcul del errror respecte la referencia funciona
       ey_bot=(yp_bot-yr_bot);
       ez_bot=(zp-zr);
 
-      int_ex_bot += ex_bot*0.1; // integracio
-      int_ey_bot += ey_bot*0.1;
-      int_ez_bot += ez_bot*0.1;
+      int_ex_bot += ex_bot*tsample; // integracio
+      int_ey_bot += ey_bot*tsample;
+      int_ez_bot += ez_bot*tsample;
 
-      vx=-kp_bot*(ey_bot)-ki_bot*(int_ey_bot)-kd_bot*(ey_bot-ey_a)/0.1; // integracio no funciona be
-      vy=-kp_bot*(ex_bot)-ki_bot*(int_ex_bot)-kd_bot*(ex_bot-ex_a)/0.1;
-      vz=-kp_bot*(ez_bot)-ki_bot*(int_ez_bot)-kd_bot*(ez_bot-ez_a)/0.1;
+      vx=-kp_bot*(ey_bot)-ki_bot*(int_ey_bot)-kd_bot*(ey_bot-ey_a)/tsample; // integracio no funciona be
+      vy=-kp_bot*(ex_bot)-ki_bot*(int_ex_bot)-kd_bot*(ex_bot-ex_a)/tsample;
+      vz=-kp_bot*(ez_bot)-ki_bot*(int_ez_bot)-kd_bot*(ez_bot-ez_a)/tsample;
 
       cmd_msg.linear.x = vx; // preparar missatge de les velocitats
       cmd_msg.linear.y = vy;
@@ -223,14 +236,17 @@ int main(int argc, char **argv)
       //control orientacio
 
       //exo_bot=(xo_bot-xor_bot); // calcul del errror respecte la referencia funciona
-      eyaw_bot=(yawr_bot-yaw_bot);
+      eyaw_bot=(yaw_bot-yawr_bot);
 
       ROS_INFO("Error: %f",eyaw_bot);
       //ezo_bot=(zo_bot-zor_bot);
 
-      vyaw=-kp_yaw*(eyaw_bot);//-ki_bot*(int_eyaw_bot)-kd_bot*(ey_bot-ey_a)/0.1; // integracio no funciona be
+      vyaw=-kp_yaw*(eyaw_bot)-ki_yaw*int_eyaw*tsample-kd_yaw*(eyaw_bot-eyaw_a);
       //vay=-kp_bot*(ex_bot)-ki_bot*(int_ex_bot)-kd_bot*(ex_bot-ex_a)/0.1;
       //vaz=-kp_bot*(ez_bot)-ki_bot*(int_ez_bot)-kd_bot*(ez_bot-ez_a)/0.1;
+      int_eyaw += eyaw_bot;
+      eyaw_a = eyaw_bot;
+
 
       cmd_msg.angular.z=vyaw;
       ROS_INFO("Velocitat: %f",eyaw_bot);
