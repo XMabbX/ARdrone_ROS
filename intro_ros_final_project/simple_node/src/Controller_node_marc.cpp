@@ -9,12 +9,13 @@
 #include <tf/LinearMath/Matrix3x3.h>
 #include <vector>
 
+#include "ros/time.h"
 
 
 #include <dynamic_reconfigure/server.h>
 #include <simple_node/dynparamsConfig.h>
 
-bool go_takeoff, go_land, change_cam, cont_bot, cont_front;
+bool go_takeoff, go_land, change_cam, cont_bot, cont_front, execute;
 
 float tsample=0.1;
 
@@ -25,10 +26,10 @@ float xr_bot, yr_bot, zr; // Reference bottom
 float ex_bot, ey_bot, ez_bot, int_ex_bot, int_ey_bot, int_ez_bot; // errors
 
 // Orientacion variables
-tfScalar roll_bot, yaw_bot,pitch_bot;
-float rollr_bot=0, yawr_bot=1, pitchr_bot=0;
+tfScalar roll_bot, yaw_bot, pitch_bot;
+float rollr_bot=0, yawr_bot=0, pitchr_bot=0;
 float eroll_bot, eyaw_bot, epitch_bot;
-float kp_yaw=0.2, ki_yaw=0, kd_yaw=0;
+float kp_yaw=0, ki_yaw=0, kd_yaw=0;
 float int_eyaw=0; // Accumulated error
 float eyaw_a=0; // Error anterior
 
@@ -36,11 +37,15 @@ float vyaw;
 
 float vx, vy, vz;
 
+int state=0; // Variabel of the state machine
+
 // Front variables
 float xp_front, yp_front;
 float kp_front, ki_front, kd_front;
 float xr_front, yr_front;
 float ex_front, ey_front, ez_front, int_ex_front, int_ey_front, int_ez_front;
+
+tfScalar roll_front, pitch_front, yaw_front;
 
 float ex_a=0,ey_a=0,ez_a=0;
 
@@ -62,6 +67,7 @@ void callback(simple_node::dynparamsConfig &config, uint32_t level) {
 
   cont_bot=config.cont_bot;
   cont_front=config.cont_front;
+  execute=config.execute;
 
   if(cont_bot||cont_front){
     xr_bot=config.x_ref; // posicions de referncia
@@ -83,9 +89,9 @@ void callback(simple_node::dynparamsConfig &config, uint32_t level) {
     kp_yaw=config.kp_yaw;
     ki_yaw=config.ki_yaw;
     kd_yaw=config.kd_yaw;
-
-
   }
+
+
 
 
   }
@@ -115,6 +121,13 @@ void chatterCallback(const ar_pose::ARMarkers::ConstPtr& msg)
       }else if(ar_pose_marker.id==1){
         xp_front=ar_pose_marker.pose.pose.position.x;
         yp_front=ar_pose_marker.pose.pose.position.y;
+        tf::Quaternion q(ar_pose_marker.pose.pose.orientation.x,
+            ar_pose_marker.pose.pose.orientation.y,
+            ar_pose_marker.pose.pose.orientation.z,
+            ar_pose_marker.pose.pose.orientation.w);
+
+        tf::Matrix3x3 m(q);
+        m.getRPY(roll_front, pitch_front, yaw_front);
       }
 
   }
@@ -122,7 +135,7 @@ void chatterCallback(const ar_pose::ARMarkers::ConstPtr& msg)
   //xp=msg.markers.pose.pose.position.x;
   //yp=msg.markers.pose.pose.position.y;
   //zp=msg.pose.pose.position.z;
-  ROS_INFO("Orientacio %f %f %f",roll_bot,pitch_bot,yaw_bot);
+  //ROS_INFO("Orientacio %f %f %f",roll_bot,pitch_bot,yaw_bot);
 //  ROS_INFO("Pose: %f %f %d", //This is the marker floor position respect robot
                             // cameracd
   //xp_bot,yp_bot,ar_pose_marker.id);
@@ -154,13 +167,31 @@ void sonarCallback(const sensor_msgs::Range msg)
 
 //}
 
+// Funcio controlador de velocitat
 
+float controller(float errorx, float *integralx, float *errorax, float fkp, float fkd, float fki)
+{
+  float velocitat;
+
+  *integralx += *integralx*tsample; // integracio
+
+  velocitat=-fkp*(errorx)-fki*(*integralx)-fkd*(errorx-*errorax)/tsample;
+
+  *errorax = errorx;
+
+  return velocitat;
+}
 
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "Controller_node_marc");
   ros::NodeHandle n;
   ros::Rate loop_rate(10);
+  double temps, begin;
+  bool wait;
+  std_msgs::Empty msg;
+  geometry_msgs::Twist cmd_msg;
+
 
   //tf::TransformListener listener(ros::Duration(10),1);
 
@@ -191,8 +222,6 @@ int main(int argc, char **argv)
 
   while (ros::ok())
   {
-    std_msgs::Empty msg;
-    geometry_msgs::Twist cmd_msg;
 
 //Take off the drone.
     if(go_takeoff)
@@ -214,61 +243,116 @@ int main(int argc, char **argv)
 
     }
 
-    // Create states machine
-    if(cont_bot){
 
-      ex_bot=(xp_bot-xr_bot); // calcul del errror respecte la referencia funciona
-      ey_bot=(yp_bot-yr_bot);
-      ez_bot=(zp-zr);
+    //If the parameter execute is on the drone starts to execute all teh process, if turn off we can take back the ocntorl of the drone.
+    if(execute){
+      switch (state) {
+        case 0:
+          takeoff_pub.publish(msg);
+          camera.call(camera_srv);
+          state = 1;
+        case 1:
+          //Controlar i orientar i esperar 5 segons
+          ex_bot=(xp_bot-xr_bot);
+          ey_bot=(yp_bot-yr_bot);
+          ez_bot=(zp-zr);
 
-      int_ex_bot += ex_bot*tsample; // integracio
-      int_ey_bot += ey_bot*tsample;
-      int_ez_bot += ez_bot*tsample;
+          vx = controller(ey_bot, &int_ey_bot, &ey_a,kp_bot,ki_bot,kd_bot);
+          vy = controller(ex_bot, &int_ex_bot, &ex_a,kp_bot,ki_bot,kd_bot);
+          vz = controller(ez_bot, &int_ez_bot, &ez_a,kp_bot,ki_bot,kd_bot);
 
-      vx=-kp_bot*(ey_bot)-ki_bot*(int_ey_bot)-kd_bot*(ey_bot-ey_a)/tsample; // integracio no funciona be
-      vy=-kp_bot*(ex_bot)-ki_bot*(int_ex_bot)-kd_bot*(ex_bot-ex_a)/tsample;
-      vz=-kp_bot*(ez_bot)-ki_bot*(int_ez_bot)-kd_bot*(ez_bot-ez_a)/tsample;
+          eyaw_bot=(yaw_bot-yawr_bot);
 
-      cmd_msg.linear.x = vx; // preparar missatge de les velocitats
-      cmd_msg.linear.y = vy;
-      cmd_msg.linear.z = vz;
+          vyaw= controller(eyaw_bot, &int_eyaw, &eyaw_a, kp_yaw, ki_yaw, kd_yaw);
 
-      //control orientacio
+          cmd_msg.linear.x=vx;
+          cmd_msg.linear.y=vy;
+          cmd_msg.linear.z=vz;
 
-      //exo_bot=(xo_bot-xor_bot); // calcul del errror respecte la referencia funciona
-      eyaw_bot=(yaw_bot-yawr_bot);
+          cmd_msg.angular.z=vyaw;
 
-      ROS_INFO("Error: %f",eyaw_bot);
-      //ezo_bot=(zo_bot-zor_bot);
-
-      vyaw=-kp_yaw*(eyaw_bot)-ki_yaw*int_eyaw*tsample-kd_yaw*(eyaw_bot-eyaw_a);
-      //vay=-kp_bot*(ex_bot)-ki_bot*(int_ex_bot)-kd_bot*(ex_bot-ex_a)/0.1;
-      //vaz=-kp_bot*(ez_bot)-ki_bot*(int_ez_bot)-kd_bot*(ez_bot-ez_a)/0.1;
-      int_eyaw += eyaw_bot;
-      eyaw_a = eyaw_bot;
+          vel_pub.publish(cmd_msg);
 
 
-      cmd_msg.angular.z=vyaw;
-      ROS_INFO("Velocitat: %f",eyaw_bot);
+            if(wait==0)
+            {
+              if((ex_bot+ex_bot+ex_bot+eyaw_bot)<=0.2)
+              {
+              wait = 1;
+              begin = ros::Time::now().toSec();
+              ROS_INFO("Alligned bot marker")
+              }
+            }else{
+              if(temps<=5){
+                temps = ros::Time::now().toSec() - begin;
+                ROS_INFO("Time passed %f", temps)
+              }else{
+                state = 1;
+              }
+            }
+          break;
+        case 2:
+          camera.call(camera_srv);
+          state=3;
 
-    //  ROS_INFO("Error: %f %f %f", ex_bot, ey_bot, ez_bot);
-      //ROS_INFO("Vel: %f %f %f", vx,vy,vz);
-      vel_pub.publish(cmd_msg);
-      // We save the previous error
-      ex_a = ex_bot;
-      ey_a = ey_bot;
-      ez_a = ez_bot;
+      }
+
+
 
 
     }else{
-      if(cmd_msg.linear.x!=0)  // sino esta el control actiu porta totes les velocitats a 0
-      cmd_msg.linear.x = 0;
-      cmd_msg.linear.y = 0;
-      cmd_msg.linear.z = 0;
-      vel_pub.publish(cmd_msg);
+
+      //We have the control of the dron.
+
+      if(cont_bot){
+
+        ex_bot=(xp_bot-xr_bot); // calcul del errror respecte la referencia funciona
+        ey_bot=(yp_bot-yr_bot);
+        ez_bot=(zp-zr);
+
+        vx = controller(ey_bot, &int_ey_bot, &ey_a,kp_bot,ki_bot,kd_bot);
+        vy = controller(ex_bot, &int_ex_bot, &ex_a,kp_bot,ki_bot,kd_bot);
+        vz = controller(ez_bot, &int_ez_bot, &ez_a,kp_bot,ki_bot,kd_bot);
+
+        //control orientacio
+
+        //exo_bot=(xo_bot-xor_bot); // calcul del errror respecte la referencia funciona
+        eyaw_bot=(yaw_bot-yawr_bot);
+
+        //ROS_INFO("Error: %f",eyaw_bot);
+        //ezo_bot=(zo_bot-zor_bot);
+
+        vyaw= controller(eyaw_bot, &int_eyaw, &eyaw_a, kp_yaw, ki_yaw, kd_yaw);
+        //vay=-kp_bot*(ex_bot)-ki_bot*(int_ex_bot)-kd_bot*(ex_bot-ex_a)/0.1;
+        //vaz=-kp_bot*(ez_bot)-ki_bot*(int_ez_bot)-kd_bot*(ez_bot-ez_a)/0.1;
+
+        cmd_msg.linear.x=vx;
+        cmd_msg.linear.y=vy;
+        cmd_msg.linear.z=vz;
+
+        cmd_msg.angular.z=vyaw;
+
+        //ROS_INFO("Velocitat: %f",eyaw_bot);
+
+      //  ROS_INFO("Error: %f %f %f", ex_bot, ey_bot, ez_bot);
+        //ROS_INFO("Vel: %f %f %f", vx,vy,vz);
+        vel_pub.publish(cmd_msg);
+        // We save the previous error
+
+
+
+      }else{
+
+        // sino esta el control actiu porta totes les velocitats a 0
+        cmd_msg.linear.x = 0;
+        cmd_msg.linear.y = 0;
+        cmd_msg.linear.z = 0;
+
+        cmd_msg.angular.z=0;
+        vel_pub.publish(cmd_msg);
+      }
+
     }
-
-
     ros::spinOnce();
     loop_rate.sleep();
   }
