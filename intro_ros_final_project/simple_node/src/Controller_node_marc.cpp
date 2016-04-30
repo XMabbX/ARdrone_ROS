@@ -280,12 +280,12 @@ int main(int argc, char **argv)
               {
               wait = 1;
               begin = ros::Time::now().toSec();
-              ROS_INFO("Alligned bot marker")
+              ROS_INFO("Alligned bot marker");
               }
             }else{
               if(temps<=5){
                 temps = ros::Time::now().toSec() - begin;
-                ROS_INFO("Time passed %f", temps)
+                ROS_INFO("Time passed %f", temps);
               }else{
                 state = 1;
               }
