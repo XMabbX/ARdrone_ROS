@@ -78,6 +78,7 @@ void callback(simple_node::dynparamsConfig &config, uint32_t level) {
     yawr_bot = config.yaw_ref;
 
 
+
     kp_bot=config.kp;  // valors del controlador bot
     ki_bot=config.ki;
     kd_bot=config.kd;
@@ -116,6 +117,7 @@ void chatterCallback(const ar_pose::ARMarkers::ConstPtr& msg)
 
       	tf::Matrix3x3 m(q);
       	m.getRPY(roll_bot,pitch_bot,yaw_bot);
+        ROS_INFO("Yaw %f",yaw_bot);
 
 
       }else if(ar_pose_marker.id==1){
@@ -169,13 +171,13 @@ void sonarCallback(const sensor_msgs::Range msg)
 
 // Funcio controlador de velocitat
 
-float controller(float errorx, float *integralx, float *errorax, float fkp, float fkd, float fki)
+float controller(float error, float *integral, float *errora, float fkp, float fkd, float fki)
 {
   float velocitat;
 
-  *integralx += *integralx*tsample; // integracio
+  *integral += *integral*tsample; // integracio
 
-  velocitat=-fkp*(errorx)-fki*(*integralx)-fkd*(errorx-*errorax)/tsample;
+  velocitat=-fkp*(error)-fki*(*integral)-fkd*(error-*errora)/tsample;
 
   *errorax = errorx;
 
@@ -215,7 +217,7 @@ int main(int argc, char **argv)
   int_ex_bot=0; //incialitza integracio
   int_ey_bot=0;
   int_ez_bot=0;
-
+  bool found=0;
 
   ROS_INFO("--Controller node");
 
@@ -223,26 +225,12 @@ int main(int argc, char **argv)
   while (ros::ok())
   {
 
-//Take off the drone.
-    if(go_takeoff)
-    {
-      takeoff_pub.publish(msg);
-      go_takeoff=false;
-    }
-//Land the drone
-    if(go_land)
-    {
-      land_pub.publish(msg);
-      go_land=false;
-    }
-//Change topic image_raw between the two cameras.
-    if(change_cam)
-    {
-      camera.call(camera_srv);
-      change_cam = false;
-
-    }
-
+    //Land the drone
+        if(go_land)
+        {
+          land_pub.publish(msg);
+          go_land=false;
+        }
 
     //If the parameter execute is on the drone starts to execute all teh process, if turn off we can take back the ocntorl of the drone.
     if(execute){
@@ -261,15 +249,15 @@ int main(int argc, char **argv)
           vy = controller(ex_bot, &int_ex_bot, &ex_a,kp_bot,ki_bot,kd_bot);
           vz = controller(ez_bot, &int_ez_bot, &ez_a,kp_bot,ki_bot,kd_bot);
 
-          eyaw_bot=(yaw_bot-yawr_bot);
+          //eyaw_bot=(yaw_bot-yawr_bot);
 
-          vyaw= controller(eyaw_bot, &int_eyaw, &eyaw_a, kp_yaw, ki_yaw, kd_yaw);
+          //vyaw= controller(eyaw_bot, &int_eyaw, &eyaw_a, kp_yaw, ki_yaw, kd_yaw);
 
           cmd_msg.linear.x=vx;
           cmd_msg.linear.y=vy;
           cmd_msg.linear.z=vz;
 
-          cmd_msg.angular.z=vyaw;
+          //cmd_msg.angular.z=vyaw;
 
           vel_pub.publish(cmd_msg);
 
@@ -287,13 +275,20 @@ int main(int argc, char **argv)
                 temps = ros::Time::now().toSec() - begin;
                 ROS_INFO("Time passed %f", temps);
               }else{
-                state = 1;
+                state = 2;
               }
             }
           break;
         case 2:
           camera.call(camera_srv);
           state=3;
+        case 3:
+        if(found!=0)
+        {
+          cmd_msg.angular.z=1;
+          vel_pub.publish(cmd_msg);
+
+        }
 
       }
 
@@ -305,6 +300,20 @@ int main(int argc, char **argv)
       //We have the control of the dron.
 
       if(cont_bot){
+
+        //Take off the drone.
+            if(go_takeoff)
+            {
+              takeoff_pub.publish(msg);
+              go_takeoff=false;
+            }
+        //Change topic image_raw between the two cameras.
+            if(change_cam)
+            {
+              camera.call(camera_srv);
+              change_cam = false;
+
+            }
 
         ex_bot=(xp_bot-xr_bot); // calcul del errror respecte la referencia funciona
         ey_bot=(yp_bot-yr_bot);
