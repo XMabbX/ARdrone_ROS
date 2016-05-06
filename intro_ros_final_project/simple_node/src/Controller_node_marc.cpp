@@ -4,6 +4,7 @@
 #include "ar_pose/ARMarkers.h"
 #include "geometry_msgs/Twist.h"
 #include "sensor_msgs/Range.h"
+#include <math.h>
 //#include <geometry_msgs/PointStamped.h>
 #include <tf/transform_listener.h>
 #include <tf/LinearMath/Matrix3x3.h>
@@ -40,9 +41,9 @@ float vx, vy, vz;
 int state=0; // Variabel of the state machine
 
 // Front variables
-float xp_front, yp_front;
+float xp_front, yp_front, zp_front;
 float kp_front, ki_front, kd_front;
-float xr_front, yr_front;
+float xr_front, yr_front,zr_front;
 float ex_front, ey_front, ez_front, int_ex_front, int_ey_front, int_ez_front;
 
 tfScalar roll_front, pitch_front, yaw_front;
@@ -50,6 +51,10 @@ tfScalar roll_front, pitch_front, yaw_front;
 float ex_a=0,ey_a=0,ez_a=0;
 
 float sonar_h;
+
+bool found=0;
+
+int idmarker = 1;
 
 void callback(simple_node::dynparamsConfig &config, uint32_t level) {
 
@@ -69,7 +74,7 @@ void callback(simple_node::dynparamsConfig &config, uint32_t level) {
   cont_front=config.cont_front;
   execute=config.execute;
 
-  if(cont_bot||cont_front){
+
     xr_bot=config.x_ref; // posicions de referncia
     xr_front=config.x_ref; // posicions de referncia
     yr_bot=config.y_ref;
@@ -90,7 +95,7 @@ void callback(simple_node::dynparamsConfig &config, uint32_t level) {
     kp_yaw=config.kp_yaw;
     ki_yaw=config.ki_yaw;
     kd_yaw=config.kd_yaw;
-  }
+
 
 
 
@@ -105,6 +110,7 @@ void chatterCallback(const ar_pose::ARMarkers::ConstPtr& msg)
   for(i=0;i<msg->markers.size();i++){
       ar_pose_marker = msg->markers.at(i);
       if(ar_pose_marker.id==0){
+        idmarker = ar_pose_marker.id;
         // Position respect bottom marker
         xp_bot=ar_pose_marker.pose.pose.position.x;
         yp_bot=ar_pose_marker.pose.pose.position.y;
@@ -117,12 +123,14 @@ void chatterCallback(const ar_pose::ARMarkers::ConstPtr& msg)
 
       	tf::Matrix3x3 m(q);
       	m.getRPY(roll_bot,pitch_bot,yaw_bot);
-        ROS_INFO("Yaw %f",yaw_bot);
+        //ROS_INFO("Yaw %f",yaw_bot);
 
 
       }else if(ar_pose_marker.id==1){
+        found = ar_pose_marker.id;
         xp_front=ar_pose_marker.pose.pose.position.x;
         yp_front=ar_pose_marker.pose.pose.position.y;
+        zp_front=ar_pose_marker.pose.pose.position.z;
         tf::Quaternion q(ar_pose_marker.pose.pose.orientation.x,
             ar_pose_marker.pose.pose.orientation.y,
             ar_pose_marker.pose.pose.orientation.z,
@@ -179,7 +187,7 @@ float controller(float error, float *integral, float *errora, float fkp, float f
 
   velocitat=-fkp*(error)-fki*(*integral)-fkd*(error-*errora)/tsample;
 
-  *errorax = errorx;
+  *errora = error;
 
   return velocitat;
 }
@@ -217,7 +225,6 @@ int main(int argc, char **argv)
   int_ex_bot=0; //incialitza integracio
   int_ey_bot=0;
   int_ez_bot=0;
-  bool found=0;
 
   ROS_INFO("--Controller node");
 
@@ -238,12 +245,15 @@ int main(int argc, char **argv)
         case 0:
           takeoff_pub.publish(msg);
           camera.call(camera_srv);
+          sleep(0.1);
           state = 1;
         case 1:
           //Controlar i orientar i esperar 5 segons
           ex_bot=(xp_bot-xr_bot);
           ey_bot=(yp_bot-yr_bot);
           ez_bot=(zp-zr);
+
+
 
           vx = controller(ey_bot, &int_ey_bot, &ey_a,kp_bot,ki_bot,kd_bot);
           vy = controller(ex_bot, &int_ex_bot, &ex_a,kp_bot,ki_bot,kd_bot);
@@ -256,7 +266,7 @@ int main(int argc, char **argv)
           cmd_msg.linear.x=vx;
           cmd_msg.linear.y=vy;
           cmd_msg.linear.z=vz;
-
+          //ROS_INFO("Error: %f %f %f", vx, vy, vz);
           //cmd_msg.angular.z=vyaw;
 
           vel_pub.publish(cmd_msg);
@@ -264,7 +274,8 @@ int main(int argc, char **argv)
 
             if(wait==0)
             {
-              if((ex_bot+ex_bot+ex_bot+eyaw_bot)<=0.2)
+              //ROS_INFO("Error: %f", (ex_bot+ey_bot+ez_bot));
+              if((fabs(ex_bot+ey_bot+ez_bot)<=0.1)&&(!idmarker))
               {
               wait = 1;
               begin = ros::Time::now().toSec();
@@ -282,15 +293,80 @@ int main(int argc, char **argv)
         case 2:
           camera.call(camera_srv);
           state=3;
+          ROS_INFO("Turning");
+          wait = 0;
+          temps = 5;
         case 3:
-        if(found!=0)
-        {
-          cmd_msg.angular.z=1;
-          vel_pub.publish(cmd_msg);
+          if(found==0)
+          {
+            cmd_msg.linear.x=0;
+            cmd_msg.linear.y=0;
+            cmd_msg.linear.z=0;
+            cmd_msg.angular.z=0.5;
+            vel_pub.publish(cmd_msg);
 
-        }
+          }else{
 
-      }
+            ex_front =(xp_front-yr_front);
+            //ez_front =(-xp_front);
+            ROS_INFO("Error: %f", ex_front);
+            vyaw = controller(ex_front, &int_ex_front, &ex_a,0.1,0,0);
+            //vz = controller(ez_front, &int_ez_front, &ez_a,0.2,0,0);
+
+            //cmd_msg.linear.z=vz;
+            cmd_msg.angular.z=vyaw;
+            //ROS_INFO("Error %f", ex_front);
+            vel_pub.publish(cmd_msg);
+            if(fabs(ex_front)<=0.1){
+              state = 4;
+              ROS_INFO("Alligned front");
+              ROS_INFO("starting aproax");
+            }
+          }
+          break;
+        case 4:
+        ez_front =(yp_front-0);
+        ex_front =(0.2-zp_front);
+          if(fabs(ex_front)>1){
+            ROS_INFO("Error: %f %f", ex_front, ez_front);
+
+            vz = controller(ez_front, &int_ez_front, &ez_a,0.3,0,0);
+            vx = controller(ex_front, &int_ex_front, &ex_a,0.2,0,0);
+
+            cmd_msg.linear.x=vx;
+            cmd_msg.linear.z=vz;
+            cmd_msg.angular.z=0;
+
+            vel_pub.publish(cmd_msg);
+          }else{
+            ez_front =(yp_front-0);
+            ex_front =(1-zp_front);
+
+            vz = controller(ez_front, &int_ez_front, &ez_a,0.3,0,0);
+            vx = controller(ex_front, &int_ex_front, &ex_a,0.2,0,0);
+            cmd_msg.linear.x=vx;
+            cmd_msg.linear.z=vz;
+            vel_pub.publish(cmd_msg);
+
+            if(wait==0)
+            {
+              //ROS_INFO("Error: %f", (ex_bot+ey_bot+ez_bot));
+              wait = 1;
+              begin = ros::Time::now().toSec();
+              ROS_INFO("Final wait front");
+            }else{
+              if(temps<=5){
+                temps = ros::Time::now().toSec() - begin;
+                ROS_INFO("Time passed %f", temps);
+              }else{
+                state = 5;
+              }
+            }
+          }
+          break;
+          case 5:
+          land_pub.publish(msg);
+    }
 
 
 
@@ -326,12 +402,12 @@ int main(int argc, char **argv)
         //control orientacio
 
         //exo_bot=(xo_bot-xor_bot); // calcul del errror respecte la referencia funciona
-        eyaw_bot=(yaw_bot-yawr_bot);
+        //eyaw_bot=(yaw_bot-yawr_bot);
 
         //ROS_INFO("Error: %f",eyaw_bot);
         //ezo_bot=(zo_bot-zor_bot);
 
-        vyaw= controller(eyaw_bot, &int_eyaw, &eyaw_a, kp_yaw, ki_yaw, kd_yaw);
+        //vyaw= controller(eyaw_bot, &int_eyaw, &eyaw_a, kp_yaw, ki_yaw, kd_yaw);
         //vay=-kp_bot*(ex_bot)-ki_bot*(int_ex_bot)-kd_bot*(ex_bot-ex_a)/0.1;
         //vaz=-kp_bot*(ez_bot)-ki_bot*(int_ez_bot)-kd_bot*(ez_bot-ez_a)/0.1;
 
@@ -339,7 +415,7 @@ int main(int argc, char **argv)
         cmd_msg.linear.y=vy;
         cmd_msg.linear.z=vz;
 
-        cmd_msg.angular.z=vyaw;
+        //cmd_msg.angular.z=vyaw;
 
         //ROS_INFO("Velocitat: %f",eyaw_bot);
 
