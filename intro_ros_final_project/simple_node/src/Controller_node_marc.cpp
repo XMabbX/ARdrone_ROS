@@ -114,7 +114,7 @@ void chatterCallback(const ar_pose::ARMarkers::ConstPtr& msg)
         // Position respect bottom marker
         xp_bot=ar_pose_marker.pose.pose.position.x;
         yp_bot=ar_pose_marker.pose.pose.position.y;
-
+        //zp=ar_pose_marker.pose.pose.position.z;
         // Transform quaternions to roll pitch and yaw
         tf::Quaternion q(ar_pose_marker.pose.pose.orientation.x,
       			ar_pose_marker.pose.pose.orientation.y,
@@ -238,14 +238,19 @@ int main(int argc, char **argv)
           land_pub.publish(msg);
           go_land=false;
         }
-
+    //Take off the drone.
+        if(go_takeoff)
+        {
+          takeoff_pub.publish(msg);
+          go_takeoff=false;
+        }
     //If the parameter execute is on the drone starts to execute all teh process, if turn off we can take back the ocntorl of the drone.
     if(execute){
       switch (state) {
         case 0:
           takeoff_pub.publish(msg);
           camera.call(camera_srv);
-          sleep(0.1);
+          sleep(1.5);
           state = 1;
         case 1:
           //Controlar i orientar i esperar 5 segons
@@ -274,7 +279,7 @@ int main(int argc, char **argv)
 
             if(wait==0)
             {
-              //ROS_INFO("Error: %f", (ex_bot+ey_bot+ez_bot));
+              ROS_INFO("Error: %f", (ex_bot+ey_bot+ez_bot));
               if((fabs(ex_bot+ey_bot+ez_bot)<=0.1)&&(!idmarker))
               {
               wait = 1;
@@ -291,6 +296,10 @@ int main(int argc, char **argv)
             }
           break;
         case 2:
+          cmd_msg.linear.x=0;
+          cmd_msg.linear.y=0;
+          cmd_msg.linear.z=0;
+          vel_pub.publish(cmd_msg);
           camera.call(camera_srv);
           state=3;
           ROS_INFO("Turning");
@@ -299,9 +308,6 @@ int main(int argc, char **argv)
         case 3:
           if(found==0)
           {
-            cmd_msg.linear.x=0;
-            cmd_msg.linear.y=0;
-            cmd_msg.linear.z=0;
             cmd_msg.angular.z=0.5;
             vel_pub.publish(cmd_msg);
 
@@ -377,12 +383,7 @@ int main(int argc, char **argv)
 
       if(cont_bot){
 
-        //Take off the drone.
-            if(go_takeoff)
-            {
-              takeoff_pub.publish(msg);
-              go_takeoff=false;
-            }
+
         //Change topic image_raw between the two cameras.
             if(change_cam)
             {

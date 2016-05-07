@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
 <launch>
+<include file="$(find simple_node)/launch/ar_marker1.launch"/>
 
 <node name="Controller_node" pkg="simple_node" type="Controller_node_marc" respawn="false" output="screen">
 </node>
