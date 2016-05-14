@@ -4,8 +4,9 @@
 #include "ar_pose/ARMarkers.h"
 #include "geometry_msgs/Twist.h"
 #include "sensor_msgs/Range.h"
+#include "nav_msgs/Odometry.h"
 #include <math.h>
-//#include <geometry_msgs/PointStamped.h>
+#include <geometry_msgs/PointStamped.h>
 #include <tf/transform_listener.h>
 #include <tf/LinearMath/Matrix3x3.h>
 #include <vector>
@@ -112,8 +113,8 @@ void chatterCallback(const ar_pose::ARMarkers::ConstPtr& msg)
       if(ar_pose_marker.id==0){
         idmarker = ar_pose_marker.id;
         // Position respect bottom marker
-        xp_bot=ar_pose_marker.pose.pose.position.x;
-        yp_bot=ar_pose_marker.pose.pose.position.y;
+        //xp_bot=ar_pose_marker.pose.pose.position.x;
+        //yp_bot=ar_pose_marker.pose.pose.position.y;
         //zp=ar_pose_marker.pose.pose.position.z;
         // Transform quaternions to roll pitch and yaw
         tf::Quaternion q(ar_pose_marker.pose.pose.orientation.x,
@@ -154,9 +155,16 @@ void chatterCallback(const ar_pose::ARMarkers::ConstPtr& msg)
 
 void sonarCallback(const sensor_msgs::Range msg)
 {
-  zp=msg.range;
+  //zp=msg.range;
 }
 
+
+void odomCallback(const nav_msgs::Odometry msg)
+{
+  xp_bot=msg.pose.pose.position.x;
+  yp_bot=msg.pose.pose.position.y;
+  zp=msg.pose.pose.position.z;
+}
 //void transformPoint( const tf::TransformListener& listener){
 
 //geometry_msgs::PointStamped bot_cam_point;
@@ -196,7 +204,8 @@ int main(int argc, char **argv)
 {
   ros::init(argc, argv, "Controller_node_marc");
   ros::NodeHandle n;
-  ros::Rate loop_rate(10);
+  ros::Rate loop_rate(50);
+          tf::TransformListener listener;
   double temps, begin;
   bool wait;
   std_msgs::Empty msg;
@@ -219,6 +228,7 @@ int main(int argc, char **argv)
 
   ros::Subscriber sub = n.subscribe("ar_pose_marker", 1000, chatterCallback);
   ros::Subscriber sonar_sub = n.subscribe("/sonar_height", 1000, sonarCallback);
+  ros::Subscriber odom_sub = n.subscribe("/ardrone/odometry", 1000, odomCallback);
 
   //ros::Timer timer = n.createTimer(ros::Duration(0.1), boost::bind(&transformPoint, boost::ref(listener)));
 
@@ -382,6 +392,8 @@ int main(int argc, char **argv)
       //We have the control of the dron.
 
       if(cont_bot){
+        tf::StampedTransform transform;
+          listener.lookupTransform("/odom", "/ardrone_base_link",ros::Time(0), transform);
 
 
         //Change topic image_raw between the two cameras.
@@ -392,12 +404,12 @@ int main(int argc, char **argv)
 
             }
 
-        ex_bot=(xp_bot-xr_bot); // calcul del errror respecte la referencia funciona
-        ey_bot=(yp_bot-yr_bot);
+        ex_bot=(transform.getOrigin().x()-xr_bot); // calcul del errror respecte la referencia funciona
+        ey_bot=(transform.getOrigin().y()-yr_bot);
         ez_bot=(zp-zr);
 
-        vx = controller(ey_bot, &int_ey_bot, &ey_a,kp_bot,ki_bot,kd_bot);
-        vy = controller(ex_bot, &int_ex_bot, &ex_a,kp_bot,ki_bot,kd_bot);
+        vy = controller(ey_bot, &int_ey_bot, &ey_a,kp_bot,ki_bot,kd_bot);
+        vx = controller(ex_bot, &int_ex_bot, &ex_a,kp_bot,ki_bot,kd_bot);
         vz = controller(ez_bot, &int_ez_bot, &ez_a,kp_bot,ki_bot,kd_bot);
 
         //control orientacio
@@ -420,8 +432,8 @@ int main(int argc, char **argv)
 
         //ROS_INFO("Velocitat: %f",eyaw_bot);
 
-      //  ROS_INFO("Error: %f %f %f", ex_bot, ey_bot, ez_bot);
-        //ROS_INFO("Vel: %f %f %f", vx,vy,vz);
+        ROS_INFO("Error: %f %f %f", ex_bot, ey_bot, ez_bot);
+        ROS_INFO("Vel: %f %f %f", vx,vy,vz);
         vel_pub.publish(cmd_msg);
         // We save the previous error
 
