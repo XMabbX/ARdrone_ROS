@@ -10,7 +10,7 @@
 #include <tf/transform_listener.h>
 #include <tf/LinearMath/Matrix3x3.h>
 #include <vector>
-
+//#include "ros/Duration.h"
 #include "ros/time.h"
 
 
@@ -27,6 +27,9 @@ float kp_bot, ki_bot, kd_bot; // Variables PID Cam_bottom control
 float xr_bot, yr_bot, zr; // Reference bottom
 float ex_bot, ey_bot, ez_bot, int_ex_bot, int_ey_bot, int_ez_bot; // errors
 
+//Odometry variables
+float x_odom, y_odom, z_odom;
+tf::StampedTransform transform;//No le gusta en ninguna otra parte ¬¬
 // Orientacion variables
 tfScalar roll_bot, yaw_bot, pitch_bot;
 float rollr_bot=0, yawr_bot=0, pitchr_bot=0;
@@ -202,6 +205,7 @@ float controller(float error, float *integral, float *errora, float fkp, float f
 
 int main(int argc, char **argv)
 {
+  ros::Time::init();
   ros::init(argc, argv, "Controller_node_marc");
   ros::NodeHandle n;
   ros::Rate loop_rate(50);
@@ -241,7 +245,6 @@ int main(int argc, char **argv)
 
   while (ros::ok())
   {
-
     //Land the drone
         if(go_land)
         {
@@ -256,11 +259,12 @@ int main(int argc, char **argv)
         }
     //If the parameter execute is on the drone starts to execute all teh process, if turn off we can take back the ocntorl of the drone.
     if(execute){
+        listener.lookupTransform("/odom", "/ardrone_base_bottomcam",ros::Time(0), transform);
       switch (state) {
         case 0:
           takeoff_pub.publish(msg);
           camera.call(camera_srv);
-          sleep(1.5);
+          ros::Duration(5).sleep();
           state = 1;
         case 1:
           //Controlar i orientar i esperar 5 segons
@@ -269,7 +273,8 @@ int main(int argc, char **argv)
           ez_bot=(zp-zr);
 
 
-
+          kp_bot=0.1;
+          ki_bot=0.01;
           vx = controller(ey_bot, &int_ey_bot, &ey_a,kp_bot,ki_bot,kd_bot);
           vy = controller(ex_bot, &int_ex_bot, &ex_a,kp_bot,ki_bot,kd_bot);
           vz = controller(ez_bot, &int_ez_bot, &ez_a,kp_bot,ki_bot,kd_bot);
@@ -302,19 +307,39 @@ int main(int argc, char **argv)
                 ROS_INFO("Time passed %f", temps);
               }else{
                 state = 2;
+                x_odom = transform.getOrigin().x();
+                y_odom = transform.getOrigin().y();
+                z_odom = transform.getOrigin().z();
+
               }
             }
           break;
         case 2:
-          cmd_msg.linear.x=0;
-          cmd_msg.linear.y=0;
-          cmd_msg.linear.z=0;
-          vel_pub.publish(cmd_msg);
-          camera.call(camera_srv);
-          state=3;
-          ROS_INFO("Turning");
-          wait = 0;
-          temps = 5;
+        //  cmd_msg.linear.x=0;
+        //  cmd_msg.linear.y=0;
+        //  cmd_msg.linear.z=0;
+        //  vel_pub.publish(cmd_msg);
+        //  camera.call(camera_srv);
+        //  state=3;
+        //  ROS_INFO("Turning");
+        //  wait = 0;
+        //  temps = 5;
+        ex_bot=(transform.getOrigin().x()-x_odom-xr_bot); // calcul del errror respecte la referencia funciona
+        ey_bot=(transform.getOrigin().y()-y_odom-yr_bot);
+        ez_bot=(zp-zr);
+
+        vy = controller(-ey_bot, &int_ey_bot, &ey_a,0.1,0,kd_bot);
+        vx = controller(-ex_bot, &int_ex_bot, &ex_a,0.1,0,kd_bot);
+        vz = controller(ez_bot, &int_ez_bot, &ez_a,0.1,0,kd_bot);
+
+        cmd_msg.linear.x=vx;
+        cmd_msg.linear.y=vy;
+        cmd_msg.linear.z=vz;
+
+        ROS_INFO("Error: %f %f %f", ex_bot, ey_bot, ez_bot);
+        ROS_INFO("Vel: %f %f %f", vx,vy,vz);
+        vel_pub.publish(cmd_msg);
+        break;
         case 3:
           if(found==0)
           {
@@ -392,10 +417,8 @@ int main(int argc, char **argv)
       //We have the control of the dron.
 
       if(cont_bot){
-        tf::StampedTransform transform;
-          listener.lookupTransform("/odom", "/ardrone_base_link",ros::Time(0), transform);
 
-
+        listener.lookupTransform("/odom", "/ardrone_base_bottomcam",ros::Time(0), transform);
         //Change topic image_raw between the two cameras.
             if(change_cam)
             {
@@ -406,10 +429,10 @@ int main(int argc, char **argv)
 
         ex_bot=(transform.getOrigin().x()-xr_bot); // calcul del errror respecte la referencia funciona
         ey_bot=(transform.getOrigin().y()-yr_bot);
-        ez_bot=(zp-zr);
+        ez_bot=(transform.getOrigin().z()-zr);
 
-        vy = controller(ey_bot, &int_ey_bot, &ey_a,kp_bot,ki_bot,kd_bot);
-        vx = controller(ex_bot, &int_ex_bot, &ex_a,kp_bot,ki_bot,kd_bot);
+        vy = controller(-ey_bot, &int_ey_bot, &ey_a,kp_bot,ki_bot,kd_bot);
+        vx = controller(-ex_bot, &int_ex_bot, &ex_a,kp_bot,ki_bot,kd_bot);
         vz = controller(ez_bot, &int_ez_bot, &ez_a,kp_bot,ki_bot,kd_bot);
 
         //control orientacio
