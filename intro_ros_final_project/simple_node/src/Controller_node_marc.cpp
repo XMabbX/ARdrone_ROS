@@ -22,6 +22,7 @@ bool go_takeoff, go_land, change_cam, cont_bot, cont_front, execute;
 float tsample=0.1;
 
 // Bottom variables
+float xp_odom,yp_odom;
 float xp_bot, yp_bot, zp;
 float kp_bot, ki_bot, kd_bot; // Variables PID Cam_bottom control
 float xr_bot, yr_bot, zr; // Reference bottom
@@ -116,8 +117,8 @@ void chatterCallback(const ar_pose::ARMarkers::ConstPtr& msg)
       if(ar_pose_marker.id==0){
         idmarker = ar_pose_marker.id;
         // Position respect bottom marker
-        //xp_bot=ar_pose_marker.pose.pose.position.x;
-        //yp_bot=ar_pose_marker.pose.pose.position.y;
+        xp_bot=ar_pose_marker.pose.pose.position.x;
+        yp_bot=ar_pose_marker.pose.pose.position.y;
         //zp=ar_pose_marker.pose.pose.position.z;
         // Transform quaternions to roll pitch and yaw
         tf::Quaternion q(ar_pose_marker.pose.pose.orientation.x,
@@ -164,9 +165,9 @@ void sonarCallback(const sensor_msgs::Range msg)
 
 void odomCallback(const nav_msgs::Odometry msg)
 {
-  xp_bot=msg.pose.pose.position.x;
-  yp_bot=msg.pose.pose.position.y;
-  zp=msg.pose.pose.position.z;
+  xp_odom=msg.pose.pose.position.x;
+  yp_odom=msg.pose.pose.position.y;
+  //zp=msg.pose.pose.position.z;
 }
 //void transformPoint( const tf::TransformListener& listener){
 
@@ -205,7 +206,6 @@ float controller(float error, float *integral, float *errora, float fkp, float f
 
 int main(int argc, char **argv)
 {
-  ros::Time::init();
   ros::init(argc, argv, "Controller_node_marc");
   ros::NodeHandle n;
   ros::Rate loop_rate(50);
@@ -257,27 +257,33 @@ int main(int argc, char **argv)
           takeoff_pub.publish(msg);
           go_takeoff=false;
         }
+        if(change_cam)
+        {
+          camera.call(camera_srv);
+          change_cam = false;
+
+        }
     //If the parameter execute is on the drone starts to execute all teh process, if turn off we can take back the ocntorl of the drone.
     if(execute){
         listener.lookupTransform("/odom", "/ardrone_base_bottomcam",ros::Time(0), transform);
       switch (state) {
         case 0:
           takeoff_pub.publish(msg);
+          ros::Duration(10).sleep();
           camera.call(camera_srv);
-          ros::Duration(5).sleep();
           state = 1;
         case 1:
           //Controlar i orientar i esperar 5 segons
           ex_bot=(xp_bot-xr_bot);
           ey_bot=(yp_bot-yr_bot);
-          ez_bot=(zp-zr);
+          //ez_bot=(zp-zr);
 
 
-          kp_bot=0.1;
-          ki_bot=0.01;
-          vx = controller(ey_bot, &int_ey_bot, &ey_a,kp_bot,ki_bot,kd_bot);
-          vy = controller(ex_bot, &int_ex_bot, &ex_a,kp_bot,ki_bot,kd_bot);
-          vz = controller(ez_bot, &int_ez_bot, &ez_a,kp_bot,ki_bot,kd_bot);
+          //kp_bot=0.1;
+          //ki_bot=0.01;
+          vx = controller(ey_bot, &int_ey_bot, &ey_a,0.07,0.0,kd_bot);
+          vy = controller(ex_bot, &int_ex_bot, &ex_a,0.07,0.0,kd_bot);
+          //vz = controller(ez_bot, &int_ez_bot, &ez_a,0.07,0,kd_bot);
 
           //eyaw_bot=(yaw_bot-yawr_bot);
 
@@ -294,15 +300,15 @@ int main(int argc, char **argv)
 
             if(wait==0)
             {
-              ROS_INFO("Error: %f", (ex_bot+ey_bot+ez_bot));
-              if((fabs(ex_bot+ey_bot+ez_bot)<=0.1)&&(!idmarker))
+              ROS_INFO("Error: %f", (ex_bot+ey_bot));
+              if((fabs(ex_bot+ey_bot+ez_bot)<=0.01)&&(!idmarker))
               {
               wait = 1;
               begin = ros::Time::now().toSec();
               ROS_INFO("Alligned bot marker");
               }
             }else{
-              if(temps<=5){
+              if(temps<=10){
                 temps = ros::Time::now().toSec() - begin;
                 ROS_INFO("Time passed %f", temps);
               }else{
@@ -326,11 +332,11 @@ int main(int argc, char **argv)
         //  temps = 5;
         ex_bot=(transform.getOrigin().x()-x_odom-xr_bot); // calcul del errror respecte la referencia funciona
         ey_bot=(transform.getOrigin().y()-y_odom-yr_bot);
-        ez_bot=(zp-zr);
+        //ez_bot=(zp-zr);
 
         vy = controller(-ey_bot, &int_ey_bot, &ey_a,0.1,0,kd_bot);
         vx = controller(-ex_bot, &int_ex_bot, &ex_a,0.1,0,kd_bot);
-        vz = controller(ez_bot, &int_ez_bot, &ez_a,0.1,0,kd_bot);
+        //vz = controller(ez_bot, &int_ez_bot, &ez_a,0.1,0,kd_bot);
 
         cmd_msg.linear.x=vx;
         cmd_msg.linear.y=vy;
@@ -420,20 +426,18 @@ int main(int argc, char **argv)
 
         listener.lookupTransform("/odom", "/ardrone_base_bottomcam",ros::Time(0), transform);
         //Change topic image_raw between the two cameras.
-            if(change_cam)
-            {
-              camera.call(camera_srv);
-              change_cam = false;
-
-            }
 
         ex_bot=(transform.getOrigin().x()-xr_bot); // calcul del errror respecte la referencia funciona
         ey_bot=(transform.getOrigin().y()-yr_bot);
-        ez_bot=(transform.getOrigin().z()-zr);
+        //ez_bot=(transform.getOrigin().z()-zr);
 
-        vy = controller(-ey_bot, &int_ey_bot, &ey_a,kp_bot,ki_bot,kd_bot);
-        vx = controller(-ex_bot, &int_ex_bot, &ex_a,kp_bot,ki_bot,kd_bot);
-        vz = controller(ez_bot, &int_ez_bot, &ez_a,kp_bot,ki_bot,kd_bot);
+        //ex_bot=(xp_bot-xr_bot);
+        //ey_bot=(yp_bot-yr_bot);
+        //ez_bot=(zp-zr);
+
+        vy = controller(ey_bot, &int_ey_bot, &ey_a,kp_bot,ki_bot,kd_bot);
+        vx = controller(ex_bot, &int_ex_bot, &ex_a,kp_bot,ki_bot,kd_bot);
+        //vz = controller(ez_bot, &int_ez_bot, &ez_a,kp_bot,ki_bot,kd_bot);
 
         //control orientacio
 
