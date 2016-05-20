@@ -264,7 +264,6 @@ int main(int argc, char **argv)
         {
           camera.call(camera_srv);
           change_cam = false;
-
         }
     //If the parameter execute is on the drone starts to execute all teh process, if turn off we can take back the ocntorl of the drone.
     if(execute){
@@ -356,7 +355,6 @@ int main(int argc, char **argv)
             vel_pub.publish(cmd_msg);
 
           }else{
-
             ex_front =(xp_front-yr_front);
             //ez_front =(-xp_front);
             ROS_INFO("Error: %f", ex_front);
@@ -379,25 +377,20 @@ int main(int argc, char **argv)
         ex_front =(0.2-zp_front);
           if(fabs(ex_front)>1){
             ROS_INFO("Error: %f %f", ex_front, ez_front);
-
             vz = controller(ez_front, &int_ez_front, &ez_a,0.3,0,0,tsample);
             vx = controller(ex_front, &int_ex_front, &ex_a,0.2,0,0,tsample);
-
             cmd_msg.linear.x=vx;
             cmd_msg.linear.z=vz;
             cmd_msg.angular.z=0;
-
             vel_pub.publish(cmd_msg);
           }else{
             ez_front =(yp_front-0);
             ex_front =(1-zp_front);
-
             vz = controller(ez_front, &int_ez_front, &ez_a,0.3,0,0,tsample);
             vx = controller(ex_front, &int_ex_front, &ex_a,0.2,0,0,tsample);
             cmd_msg.linear.x=vx;
             cmd_msg.linear.z=vz;
             vel_pub.publish(cmd_msg);
-
             if(wait==0)
             {
               //ROS_INFO("Error: %f", (ex_bot+ey_bot+ez_bot));
@@ -424,9 +417,7 @@ int main(int argc, char **argv)
     }else{
 
       //We have the control of the dron.
-
       if(cont_bot){
-
         listener.lookupTransform("/odom", "/ardrone_base_bottomcam",ros::Time(0), transform);
         //Change topic image_raw between the two cameras.
 
@@ -457,18 +448,12 @@ int main(int argc, char **argv)
         cmd_msg.linear.x=vx;
         cmd_msg.linear.y=vy;
         cmd_msg.linear.z=vz;
-
         //cmd_msg.angular.z=vyaw;
-
         //ROS_INFO("Velocitat: %f",eyaw_bot);
-
         ROS_INFO("Error: %f %f %f", ex_bot, ey_bot, ez_bot);
         ROS_INFO("Vel: %f %f %f", vx,vy,vz);
         vel_pub.publish(cmd_msg);
         // We save the previous error
-
-
-
       }else{
 
         // sino esta el control actiu porta totes les velocitats a 0
