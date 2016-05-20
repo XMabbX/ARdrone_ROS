@@ -217,10 +217,7 @@ int main(int argc, char **argv)
   bool wait;
   std_msgs::Empty msg;
   geometry_msgs::Twist cmd_msg;
-
-
   //tf::TransformListener listener(ros::Duration(10),1);
-
   ros::Publisher takeoff_pub = n.advertise<std_msgs::Empty>("ardrone/takeoff", 1000);
   ros::Publisher land_pub = n.advertise<std_msgs::Empty>("ardrone/land", 1000);
   ros::Publisher vel_pub = n.advertise<geometry_msgs::Twist>("/cmd_vel",1000);
@@ -290,16 +287,12 @@ int main(int argc, char **argv)
           //eyaw_bot=(yaw_bot-yawr_bot);
 
           //vyaw= controller(eyaw_bot, &int_eyaw, &eyaw_a, kp_yaw, ki_yaw, kd_yaw);
-
           cmd_msg.linear.x=vx;
           cmd_msg.linear.y=vy;
           cmd_msg.linear.z=vz;
           //ROS_INFO("Error: %f %f %f", vx, vy, vz);
           //cmd_msg.angular.z=vyaw;
-
           vel_pub.publish(cmd_msg);
-
-
             if(wait==0)
             {
               ROS_INFO("Error: %f", (ex_bot+ey_bot));
@@ -318,7 +311,6 @@ int main(int argc, char **argv)
                 x_odom = transform.getOrigin().x();
                 y_odom = transform.getOrigin().y();
                 z_odom = transform.getOrigin().z();
-
               }
             }
           break;
@@ -335,15 +327,12 @@ int main(int argc, char **argv)
         ex_bot=(transform.getOrigin().x()-x_odom-xr_bot); // calcul del errror respecte la referencia funciona
         ey_bot=(transform.getOrigin().y()-y_odom-yr_bot);
         //ez_bot=(zp-zr);
-
         vy = controller(-ey_bot, &int_ey_bot, &ey_a,0.1,0,kd_bot,tsample);
         vx = controller(-ex_bot, &int_ex_bot, &ex_a,0.1,0,kd_bot,tsample);
         //vz = controller(ez_bot, &int_ez_bot, &ez_a,0.1,0,kd_bot,tsample);
-
         cmd_msg.linear.x=vx;
         cmd_msg.linear.y=vy;
         cmd_msg.linear.z=vz;
-
         ROS_INFO("Error: %f %f %f", ex_bot, ey_bot, ez_bot);
         ROS_INFO("Vel: %f %f %f", vx,vy,vz);
         vel_pub.publish(cmd_msg);
