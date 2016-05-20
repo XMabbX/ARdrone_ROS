@@ -17,6 +17,10 @@
 #include <dynamic_reconfigure/server.h>
 #include <simple_node/dynparamsConfig.h>
 
+/* Include External Files */
+#include "controller.cpp"
+
+
 bool go_takeoff, go_land, change_cam, cont_bot, cont_front, execute;
 
 float tsample=0.1;
@@ -191,8 +195,7 @@ void odomCallback(const nav_msgs::Odometry msg)
 
 // Funcio controlador de velocitat
 
-float controller(float error, float *integral, float *errora, float fkp, float fkd, float fki)
-{
+/*float controller(float error, float *integral, float *errora, float fkp, float fkd, float fki)
   float velocitat;
 
   *integral += *integral*tsample; // integracio
@@ -202,7 +205,7 @@ float controller(float error, float *integral, float *errora, float fkp, float f
   *errora = error;
 
   return velocitat;
-}
+}*/
 
 int main(int argc, char **argv)
 {
@@ -281,9 +284,9 @@ int main(int argc, char **argv)
 
           //kp_bot=0.1;
           //ki_bot=0.01;
-          vx = controller(ey_bot, &int_ey_bot, &ey_a,0.07,0.0,kd_bot);
-          vy = controller(ex_bot, &int_ex_bot, &ex_a,0.07,0.0,kd_bot);
-          //vz = controller(ez_bot, &int_ez_bot, &ez_a,0.07,0,kd_bot);
+          vx = controller(ey_bot, &int_ey_bot, &ey_a,0.07,0.0,kd_bot,tsample);
+          vy = controller(ex_bot, &int_ex_bot, &ex_a,0.07,0.0,kd_bot,tsample);
+          //vz = controller(ez_bot, &int_ez_bot, &ez_a,0.07,0,kd_bot,tsample);
 
           //eyaw_bot=(yaw_bot-yawr_bot);
 
@@ -334,9 +337,9 @@ int main(int argc, char **argv)
         ey_bot=(transform.getOrigin().y()-y_odom-yr_bot);
         //ez_bot=(zp-zr);
 
-        vy = controller(-ey_bot, &int_ey_bot, &ey_a,0.1,0,kd_bot);
-        vx = controller(-ex_bot, &int_ex_bot, &ex_a,0.1,0,kd_bot);
-        //vz = controller(ez_bot, &int_ez_bot, &ez_a,0.1,0,kd_bot);
+        vy = controller(-ey_bot, &int_ey_bot, &ey_a,0.1,0,kd_bot,tsample);
+        vx = controller(-ex_bot, &int_ex_bot, &ex_a,0.1,0,kd_bot,tsample);
+        //vz = controller(ez_bot, &int_ez_bot, &ez_a,0.1,0,kd_bot,tsample);
 
         cmd_msg.linear.x=vx;
         cmd_msg.linear.y=vy;
@@ -357,8 +360,8 @@ int main(int argc, char **argv)
             ex_front =(xp_front-yr_front);
             //ez_front =(-xp_front);
             ROS_INFO("Error: %f", ex_front);
-            vyaw = controller(ex_front, &int_ex_front, &ex_a,0.1,0,0);
-            //vz = controller(ez_front, &int_ez_front, &ez_a,0.2,0,0);
+            vyaw = controller(ex_front, &int_ex_front, &ex_a,0.1,0,0,tsample);
+            //vz = controller(ez_front, &int_ez_front, &ez_a,0.2,0,0,tsample);
 
             //cmd_msg.linear.z=vz;
             cmd_msg.angular.z=vyaw;
@@ -377,8 +380,8 @@ int main(int argc, char **argv)
           if(fabs(ex_front)>1){
             ROS_INFO("Error: %f %f", ex_front, ez_front);
 
-            vz = controller(ez_front, &int_ez_front, &ez_a,0.3,0,0);
-            vx = controller(ex_front, &int_ex_front, &ex_a,0.2,0,0);
+            vz = controller(ez_front, &int_ez_front, &ez_a,0.3,0,0,tsample);
+            vx = controller(ex_front, &int_ex_front, &ex_a,0.2,0,0,tsample);
 
             cmd_msg.linear.x=vx;
             cmd_msg.linear.z=vz;
@@ -389,8 +392,8 @@ int main(int argc, char **argv)
             ez_front =(yp_front-0);
             ex_front =(1-zp_front);
 
-            vz = controller(ez_front, &int_ez_front, &ez_a,0.3,0,0);
-            vx = controller(ex_front, &int_ex_front, &ex_a,0.2,0,0);
+            vz = controller(ez_front, &int_ez_front, &ez_a,0.3,0,0,tsample);
+            vx = controller(ex_front, &int_ex_front, &ex_a,0.2,0,0,tsample);
             cmd_msg.linear.x=vx;
             cmd_msg.linear.z=vz;
             vel_pub.publish(cmd_msg);
@@ -435,9 +438,9 @@ int main(int argc, char **argv)
         //ey_bot=(yp_bot-yr_bot);
         //ez_bot=(zp-zr);
 
-        vy = controller(ey_bot, &int_ey_bot, &ey_a,kp_bot,ki_bot,kd_bot);
-        vx = controller(ex_bot, &int_ex_bot, &ex_a,kp_bot,ki_bot,kd_bot);
-        //vz = controller(ez_bot, &int_ez_bot, &ez_a,kp_bot,ki_bot,kd_bot);
+        vy = controller(ey_bot, &int_ey_bot, &ey_a,kp_bot,ki_bot,kd_bot,tsample);
+        vx = controller(ex_bot, &int_ex_bot, &ex_a,kp_bot,ki_bot,kd_bot,tsample);
+        //vz = controller(ez_bot, &int_ez_bot, &ez_a,kp_bot,ki_bot,kd_bot,tsample);
 
         //control orientacio
 
