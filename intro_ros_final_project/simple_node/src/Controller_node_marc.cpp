@@ -12,19 +12,20 @@
 #include <vector>
 //#include "ros/Duration.h"
 #include "ros/time.h"
-
-
 #include <dynamic_reconfigure/server.h>
 #include <simple_node/dynparamsConfig.h>
-
 /* Include External Files */
 #include "controller.cpp"
 
 
+
+int idmarker = 1;
+int state=0; // Variabel of the state machine
+
+bool found=0;
 bool go_takeoff, go_land, change_cam, cont_bot, cont_front, execute;
 
-float tsample=0.1;
-
+float tsample=0.05; // Sample time
 // Bottom variables
 float xp_odom,yp_odom;
 float xp_bot, yp_bot, zp;
@@ -44,10 +45,7 @@ float int_eyaw=0; // Accumulated error
 float eyaw_a=0; // Error anterior
 
 float vyaw;
-
 float vx, vy, vz;
-
-int state=0; // Variabel of the state machine
 
 // Front variables
 float xp_front, yp_front, zp_front;
@@ -56,14 +54,9 @@ float xr_front, yr_front,zr_front;
 float ex_front, ey_front, ez_front, int_ex_front, int_ey_front, int_ez_front;
 
 tfScalar roll_front, pitch_front, yaw_front;
-
 float ex_a=0,ey_a=0,ez_a=0;
-
 float sonar_h;
 
-bool found=0;
-
-int idmarker = 1;
 
 void callback(simple_node::dynparamsConfig &config, uint32_t level) {
 
@@ -83,15 +76,12 @@ void callback(simple_node::dynparamsConfig &config, uint32_t level) {
   cont_front=config.cont_front;
   execute=config.execute;
 
-
     xr_bot=config.x_ref; // posicions de referncia
     xr_front=config.x_ref; // posicions de referncia
     yr_bot=config.y_ref;
     yr_front=config.y_ref;
     zr=config.z_ref;
     yawr_bot = config.yaw_ref;
-
-
 
     kp_bot=config.kp;  // valors del controlador bot
     ki_bot=config.ki;
@@ -104,11 +94,6 @@ void callback(simple_node::dynparamsConfig &config, uint32_t level) {
     kp_yaw=config.kp_yaw;
     ki_yaw=config.ki_yaw;
     kd_yaw=config.kd_yaw;
-
-
-
-
-
   }
 
 void chatterCallback(const ar_pose::ARMarkers::ConstPtr& msg)
@@ -211,7 +196,7 @@ int main(int argc, char **argv)
 {
   ros::init(argc, argv, "Controller_node_marc");
   ros::NodeHandle n;
-  ros::Rate loop_rate(50);
+  ros::Rate loop_rate(50); // Miliseconds
           tf::TransformListener listener;
   double temps, begin;
   bool wait;
@@ -397,15 +382,15 @@ int main(int argc, char **argv)
     }
     }else{
       //We have the control of the dron.
-      if(cont_bot){        
+      if(cont_bot){
         listener.lookupTransform("/odom", "/ardrone_base_bottomcam",ros::Time(0), transform);
         //Change topic image_raw between the two cameras.
-        ex_bot=(transform.getOrigin().x()-xr_bot); // calcul del errror respecte la referencia funciona
-        ey_bot=(transform.getOrigin().y()-yr_bot);
+        //ex_bot=(transform.getOrigin().x()-xr_bot); // calcul del errror respecte la referencia funciona
+        //ey_bot=(transform.getOrigin().y()-yr_bot);
         //ez_bot=(transform.getOrigin().z()-zr);
 
-        //ex_bot=(xp_bot-xr_bot);
-        //ey_bot=(yp_bot-yr_bot);
+        ex_bot=(xp_bot-xr_bot);
+        ey_bot=(yp_bot-yr_bot);
         //ez_bot=(zp-zr);
 
         vy = controller(ey_bot, &int_ey_bot, &ey_a,kp_bot,ki_bot,kd_bot,tsample);
