@@ -21,7 +21,7 @@
 
 int idmarker = 1;
 int state=0; // Variabel of the state machine
-
+int groundMarker_Found = 0;
 bool found=0;
 bool go_takeoff, go_land, change_cam, cont_bot, cont_front, execute;
 
@@ -104,6 +104,7 @@ void chatterCallback(const ar_pose::ARMarkers::ConstPtr& msg)
   for(i=0;i<msg->markers.size();i++){
       ar_pose_marker = msg->markers.at(i);
       if(ar_pose_marker.id==0){
+        groundMarker_Found=1;
         idmarker = ar_pose_marker.id;
         // Position respect bottom marker
         xp_bot=ar_pose_marker.pose.pose.position.x;
@@ -114,12 +115,9 @@ void chatterCallback(const ar_pose::ARMarkers::ConstPtr& msg)
       			ar_pose_marker.pose.pose.orientation.y,
       			ar_pose_marker.pose.pose.orientation.z,
       			ar_pose_marker.pose.pose.orientation.w);
-
       	tf::Matrix3x3 m(q);
       	m.getRPY(roll_bot,pitch_bot,yaw_bot);
         //ROS_INFO("Yaw %f",yaw_bot);
-
-
       }else if(ar_pose_marker.id==1){
         found = ar_pose_marker.id;
         xp_front=ar_pose_marker.pose.pose.position.x;
@@ -383,6 +381,7 @@ int main(int argc, char **argv)
     }else{
       //We have the control of the dron.
       if(cont_bot){
+
         listener.lookupTransform("/odom", "/ardrone_base_bottomcam",ros::Time(0), transform);
         //Change topic image_raw between the two cameras.
         //ex_bot=(transform.getOrigin().x()-xr_bot); // calcul del errror respecte la referencia funciona
@@ -393,8 +392,8 @@ int main(int argc, char **argv)
         ey_bot=(yp_bot-yr_bot);
         //ez_bot=(zp-zr);
 
-        vy = controller(ey_bot, &int_ey_bot, &ey_a,kp_bot,ki_bot,kd_bot,tsample);
-        vx = controller(ex_bot, &int_ex_bot, &ex_a,kp_bot,ki_bot,kd_bot,tsample);
+        vx = controller(ey_bot, &int_ey_bot, &ey_a,kp_bot,ki_bot,kd_bot,tsample);
+        vy = controller(ex_bot, &int_ex_bot, &ex_a,kp_bot,ki_bot,kd_bot,tsample);
         //vz = controller(ez_bot, &int_ez_bot, &ez_a,kp_bot,ki_bot,kd_bot,tsample);
 
         //control orientacio
@@ -409,9 +408,9 @@ int main(int argc, char **argv)
         //vay=-kp_bot*(ex_bot)-ki_bot*(int_ex_bot)-kd_bot*(ex_bot-ex_a)/0.1;
         //vaz=-kp_bot*(ez_bot)-ki_bot*(int_ez_bot)-kd_bot*(ez_bot-ez_a)/0.1;
 
-        cmd_msg.linear.x=vx;
+        cmd_msg.linear.x=vx; // Give to the drone the velocity in vx
         cmd_msg.linear.y=vy;
-        cmd_msg.linear.z=vz;
+        //cmd_msg.linear.z=vz;
         //cmd_msg.angular.z=vyaw;
         //ROS_INFO("Velocitat: %f",eyaw_bot);
         ROS_INFO("Error: %f %f %f", ex_bot, ey_bot, ez_bot);
