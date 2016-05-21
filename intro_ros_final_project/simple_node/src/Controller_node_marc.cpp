@@ -276,16 +276,12 @@ int main(int argc, char **argv)
           ex_bot=(xp_bot-xr_bot);
           ey_bot=(yp_bot-yr_bot);
           //ez_bot=(zp-zr);
-
-
           //kp_bot=0.1;
           //ki_bot=0.01;
           vx = controller(ey_bot, &int_ey_bot, &ey_a,0.07,0.0,kd_bot,tsample);
           vy = controller(ex_bot, &int_ex_bot, &ex_a,0.07,0.0,kd_bot,tsample);
           //vz = controller(ez_bot, &int_ez_bot, &ez_a,0.07,0,kd_bot,tsample);
-
           //eyaw_bot=(yaw_bot-yawr_bot);
-
           //vyaw= controller(eyaw_bot, &int_eyaw, &eyaw_a, kp_yaw, ki_yaw, kd_yaw);
           cmd_msg.linear.x=vx;
           cmd_msg.linear.y=vy;
@@ -399,17 +395,11 @@ int main(int argc, char **argv)
           case 5:
           land_pub.publish(msg);
     }
-
-
-
-
     }else{
-
       //We have the control of the dron.
-      if(cont_bot){
+      if(cont_bot){        
         listener.lookupTransform("/odom", "/ardrone_base_bottomcam",ros::Time(0), transform);
         //Change topic image_raw between the two cameras.
-
         ex_bot=(transform.getOrigin().x()-xr_bot); // calcul del errror respecte la referencia funciona
         ey_bot=(transform.getOrigin().y()-yr_bot);
         //ez_bot=(transform.getOrigin().z()-zr);
