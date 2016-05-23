@@ -281,25 +281,16 @@ int main(int argc, char **argv)
             }
           break;
         case 2:
-        //  cmd_msg.linear.x=0;
-        //  cmd_msg.linear.y=0;
-        //  cmd_msg.linear.z=0;
-        //  vel_pub.publish(cmd_msg);
-        //  camera.call(camera_srv);
-        //  state=3;
-        //  ROS_INFO("Turning");
-        //  wait = 0;
-        //  temps = 5;
-        //ez_bot=(zp-zr);
-        vy = controller(-ey_bot, &int_ey_bot, &ey_a,0.1,0,kd_bot,tsample);
-        vx = controller(-ex_bot, &int_ex_bot, &ex_a,0.1,0,kd_bot,tsample);
-        //vz = controller(ez_bot, &int_ez_bot, &ez_a,0.1,0,kd_bot,tsample);
-        cmd_msg.linear.x=vx;
-        cmd_msg.linear.y=vy;
-        cmd_msg.linear.z=vz;
-        ROS_INFO("Error: %f %f %f", ex_bot, ey_bot, ez_bot);
-        ROS_INFO("Vel: %f %f %f", vx,vy,vz);
-        vel_pub.publish(cmd_msg);
+          cmd_msg.linear.x=0;
+          cmd_msg.linear.y=0;
+          cmd_msg.linear.z=0;
+          vel_pub.publish(cmd_msg);
+          camera.call(camera_srv);
+          state=3;
+          ROS_INFO("Turning");
+          wait = 0;
+          temps = 5;
+
         break;
         case 3:
           if(found==0)
