@@ -4,7 +4,6 @@
 #include "ar_pose/ARMarkers.h"
 #include "geometry_msgs/Twist.h"
 #include "sensor_msgs/Range.h"
-#include "nav_msgs/Odometry.h"
 #include <math.h>
 #include <geometry_msgs/PointStamped.h>
 #include <tf/transform_listener.h>
@@ -27,14 +26,11 @@ bool go_takeoff, go_land, change_cam, cont_bot, cont_front, execute;
 
 float tsample=0.05; // Sample time
 // Bottom variables
-float xp_odom,yp_odom;
 float xp_bot, yp_bot, zp;
 float kp_bot, ki_bot, kd_bot; // Variables PID Cam_bottom control
 float xr_bot, yr_bot, zr; // Reference bottom
 float ex_bot, ey_bot, ez_bot, int_ex_bot, int_ey_bot, int_ez_bot; // errors
 
-//Odometry variables
-float x_odom, y_odom, z_odom;
 tf::StampedTransform transform;//No le gusta en ninguna otra parte ¬¬
 // Orientacion variables
 tfScalar roll_bot, yaw_bot, pitch_bot;
@@ -150,12 +146,7 @@ void sonarCallback(const sensor_msgs::Range msg)
 }
 
 
-void odomCallback(const nav_msgs::Odometry msg)
-{
-  xp_odom=msg.pose.pose.position.x;
-  yp_odom=msg.pose.pose.position.y;
-  //zp=msg.pose.pose.position.z;
-}
+
 //void transformPoint( const tf::TransformListener& listener){
 
 //geometry_msgs::PointStamped bot_cam_point;
@@ -215,7 +206,7 @@ int main(int argc, char **argv)
 
   ros::Subscriber sub = n.subscribe("ar_pose_marker", 1000, chatterCallback);
   ros::Subscriber sonar_sub = n.subscribe("/sonar_height", 1000, sonarCallback);
-  ros::Subscriber odom_sub = n.subscribe("/ardrone/odometry", 1000, odomCallback);
+
 
   //ros::Timer timer = n.createTimer(ros::Duration(0.1), boost::bind(&transformPoint, boost::ref(listener)));
 
@@ -247,7 +238,6 @@ int main(int argc, char **argv)
         }
     //If the parameter execute is on the drone starts to execute all teh process, if turn off we can take back the ocntorl of the drone.
     if(execute){
-        listener.lookupTransform("/odom", "/ardrone_base_bottomcam",ros::Time(0), transform);
       switch (state) {
         case 0:
           takeoff_pub.publish(msg);
@@ -287,9 +277,6 @@ int main(int argc, char **argv)
                 ROS_INFO("Time passed %f", temps);
               }else{
                 state = 2;
-                x_odom = transform.getOrigin().x();
-                y_odom = transform.getOrigin().y();
-                z_odom = transform.getOrigin().z();
               }
             }
           break;
@@ -303,8 +290,6 @@ int main(int argc, char **argv)
         //  ROS_INFO("Turning");
         //  wait = 0;
         //  temps = 5;
-        ex_bot=(transform.getOrigin().x()-x_odom-xr_bot); // calcul del errror respecte la referencia funciona
-        ey_bot=(transform.getOrigin().y()-y_odom-yr_bot);
         //ez_bot=(zp-zr);
         vy = controller(-ey_bot, &int_ey_bot, &ey_a,0.1,0,kd_bot,tsample);
         vx = controller(-ex_bot, &int_ex_bot, &ex_a,0.1,0,kd_bot,tsample);
@@ -382,7 +367,6 @@ int main(int argc, char **argv)
       //We have the control of the dron.
       if(cont_bot){
 
-        listener.lookupTransform("/odom", "/ardrone_base_bottomcam",ros::Time(0), transform);
         //Change topic image_raw between the two cameras.
         //ex_bot=(transform.getOrigin().x()-xr_bot); // calcul del errror respecte la referencia funciona
         //ey_bot=(transform.getOrigin().y()-yr_bot);

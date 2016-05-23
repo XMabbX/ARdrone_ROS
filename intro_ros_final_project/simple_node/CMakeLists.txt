@@ -117,7 +117,7 @@ add_executable(simple_node src/simple_node.cpp)
 add_executable(simple_publisher src/simple_publisher.cpp)
 #add_executable(pub_land src/pub_land.cpp)
 #add_executable(pub_takeoff src/pub_takeoff.cpp)
-add_executable(Controller_node_marc src/Controller_node_marc.cpp)
+add_executable(Controller_node_marc_simulation src/Controller_node_marc_simulation.cpp)
 
 #add_executable(simple_subscriber src/simple_subscriber.cpp)
 
@@ -135,7 +135,7 @@ target_link_libraries(simple_node ${catkin_LIBRARIES})
 target_link_libraries(simple_publisher ${catkin_LIBRARIES})
 #target_link_libraries(pub_land ${catkin_LIBRARIES})
 #target_link_libraries(pub_takeoff ${catkin_LIBRARIES})
-target_link_libraries(Controller_node_marc ${catkin_LIBRARIES})
+target_link_libraries(Controller_node_marc_simulation ${catkin_LIBRARIES})
 
 #target_link_libraries(simple_subscriber ${catkin_LIBRARIES})
 
