@@ -5,7 +5,7 @@
 #include "geometry_msgs/Twist.h"
 #include "sensor_msgs/Range.h"
 #include "nav_msgs/Odometry.h"
-#include "ardrone_autonomy/Navdata"
+#include "ardrone_autonomy/Navdata.h"
 #include <math.h>
 #include <geometry_msgs/PointStamped.h>
 #include <tf/transform_listener.h>
@@ -265,17 +265,21 @@ int main(int argc, char **argv)
       switch (state) {
         case 0:
           takeoff_pub.publish(msg);
-          //ros::Duration(10).sleep();
-          camera.call(camera_srv);
-          if (stateDrone != 6) /* If the drone is different of taking of, go to
-          state 1 */
-          {
-            state = 1;
+          switch(stateDrone) {
+            case 2:
+                ROS_INFO("The drone is Landed");
+            break;
+            case 4: // The drone is hovering on the air
+                ROS_INFO("The drone is Hovering");
+                camera.call(camera_srv); // Toggle cam
+                state = 1; // Switch to case 1
+            break;
+            case 7:
+                ROS_INFO("The drone is taking off, wait!");
+            break;
           }
-          else
-          {
-            ROS_INFO("The drone is taking off, wait!");
-          }
+
+          break;
         case 1:
           //Controlar i orientar i esperar 5 segons
           ex_bot=(xp_bot-xr_bot);
