@@ -5,11 +5,13 @@
 #include "geometry_msgs/Twist.h"
 #include "sensor_msgs/Range.h"
 #include "nav_msgs/Odometry.h"
+#include "ardrone_autonomy/Navdata"
 #include <math.h>
 #include <geometry_msgs/PointStamped.h>
 #include <tf/transform_listener.h>
 #include <tf/LinearMath/Matrix3x3.h>
 #include <vector>
+
 //#include "ros/Duration.h"
 #include "ros/time.h"
 #include <dynamic_reconfigure/server.h>
@@ -56,7 +58,7 @@ float ex_front, ey_front, ez_front, int_ex_front, int_ey_front, int_ez_front;
 tfScalar roll_front, pitch_front, yaw_front;
 float ex_a=0,ey_a=0,ez_a=0;
 float sonar_h;
-
+uint stateDrone;
 
 void callback(simple_node::dynparamsConfig &config, uint32_t level) {
 
@@ -156,6 +158,16 @@ void odomCallback(const nav_msgs::Odometry msg)
   yp_odom=msg.pose.pose.position.y;
   //zp=msg.pose.pose.position.z;
 }
+
+void navdataCallback(const ardrone_autonomy::Navdata msg)
+{
+  stateDrone = msg.state; // Recieve the state of the drone
+  /* Possible states */
+
+//0: Unknown, 1: Init, 2: Landed, 3: Flying, 4: Hovering, 5: Test
+//6: Taking off, 7: Goto Fix Point, 8: Landing, 9: Looping
+//Note: 3,7 seems to discriminate type of flying (isFly = 3 | 7)
+}
 //void transformPoint( const tf::TransformListener& listener){
 
 //geometry_msgs::PointStamped bot_cam_point;
@@ -194,7 +206,7 @@ int main(int argc, char **argv)
 {
   ros::init(argc, argv, "Controller_node_marc");
   ros::NodeHandle n;
-  ros::Rate loop_rate(50); // Miliseconds
+  ros::Rate loop_rate(50); // Hertz
           tf::TransformListener listener;
   double temps, begin;
   bool wait;
@@ -213,9 +225,11 @@ int main(int argc, char **argv)
   ros::ServiceClient camera = n.serviceClient <std_srvs::Empty> ("/ardrone/togglecam");
   std_srvs::Empty camera_srv;
 
+  // We receive data fro mthe different subscribers
   ros::Subscriber sub = n.subscribe("ar_pose_marker", 1000, chatterCallback);
   ros::Subscriber sonar_sub = n.subscribe("/sonar_height", 1000, sonarCallback);
   ros::Subscriber odom_sub = n.subscribe("/ardrone/odometry", 1000, odomCallback);
+  ros::Subscriber navdata = n.subscribe("/ardrone/navdata",1000,navdataCallback);
 
   //ros::Timer timer = n.createTimer(ros::Duration(0.1), boost::bind(&transformPoint, boost::ref(listener)));
 
@@ -251,9 +265,17 @@ int main(int argc, char **argv)
       switch (state) {
         case 0:
           takeoff_pub.publish(msg);
-          ros::Duration(10).sleep();
+          //ros::Duration(10).sleep();
           camera.call(camera_srv);
-          state = 1;
+          if (stateDrone != 6) /* If the drone is different of taking of, go to
+          state 1 */
+          {
+            state = 1;
+          }
+          else
+          {
+            ROS_INFO("The drone is taking off, wait!");
+          }
         case 1:
           //Controlar i orientar i esperar 5 segons
           ex_bot=(xp_bot-xr_bot);
@@ -382,7 +404,7 @@ int main(int argc, char **argv)
       //We have the control of the dron.
       if(cont_bot){
 
-        listener.lookupTransform("/odom", "/ardrone_base_bottomcam",ros::Time(0), transform);
+        //listener.lookupTransform("/odom", "/ardrone_base_bottomcam",ros::Time(0), transform);
         //Change topic image_raw between the two cameras.
         //ex_bot=(transform.getOrigin().x()-xr_bot); // calcul del errror respecte la referencia funciona
         //ey_bot=(transform.getOrigin().y()-yr_bot);
