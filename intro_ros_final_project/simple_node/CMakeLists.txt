@@ -114,10 +114,10 @@ include_directories(
 #add_executable(simple_node src/simple_node.cpp)
 
 #Publisher
-add_executable(Controller_node_marc src/Controller_node_marc.cpp)
+add_executable(main_node src/main_node.cpp)
 
 
-add_dependencies(Controller_node_marc $Controller_node_marc_gencfg)
+add_dependencies(main_node $main_node_gencfg)
 
 
 ## Add cmake target dependencies of the executable/library
@@ -128,10 +128,7 @@ add_dependencies(Controller_node_marc $Controller_node_marc_gencfg)
 #target_link_libraries(simple_node ${catkin_LIBRARIES})
 
 #Publisher
-target_link_libraries(Controller_node_marc ${catkin_LIBRARIES})
-
-
-
+target_link_libraries(main_node ${catkin_LIBRARIES})
 
 
 #############

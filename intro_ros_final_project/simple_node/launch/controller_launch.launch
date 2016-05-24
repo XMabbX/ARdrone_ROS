@@ -3,7 +3,7 @@
 <!-- Exclude ardrone_sim if it want to run the real drone-->
 <include file="$(find simple_node)/launch/ar_marker1.launch"/>
 
-<node name="Controller_node" pkg="simple_node" type="Controller_node_marc_simulation" respawn="false" output="screen">
+<node name="Controller_node" pkg="simple_node" type="main_node" respawn="false" output="screen">
 </node>
 
 <node name="Reconfigure" pkg="rqt_reconfigure" type="rqt_reconfigure" respawn="false">
