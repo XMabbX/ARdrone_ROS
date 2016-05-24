@@ -287,9 +287,9 @@ int main(int argc, char **argv)
           //ez_bot=(zp-zr);
           //kp_bot=0.1;
           //ki_bot=0.01;
-          vx = controller(ey_bot, &int_ey_bot, &ey_a,0.07,0.0,kd_bot,tsample);
-          vy = controller(ex_bot, &int_ex_bot, &ex_a,0.07,0.0,kd_bot,tsample);
-          //vz = controller(ez_bot, &int_ez_bot, &ez_a,0.07,0,kd_bot,tsample);
+          vx = controller(ey_bot, &int_ey_bot, &ey_a,0.01,0.0,kd_bot,tsample);
+          vy = controller(ex_bot, &int_ex_bot, &ex_a,0.01,0.0,kd_bot,tsample);
+          vz = controller(ez_bot, &int_ez_bot, &ez_a,0.01,0,kd_bot,tsample);
           //eyaw_bot=(yaw_bot-yawr_bot);
           //vyaw= controller(eyaw_bot, &int_eyaw, &eyaw_a, kp_yaw, ki_yaw, kd_yaw);
           cmd_msg.linear.x=vx;
@@ -308,7 +308,7 @@ int main(int argc, char **argv)
               ROS_INFO("Alligned bot marker");
               }
             }else{
-              if(temps<=10){
+              if(temps<=5){
                 temps = ros::Time::now().toSec() - begin;
                 ROS_INFO("Time passed %f", temps);
               }else{
@@ -331,10 +331,10 @@ int main(int argc, char **argv)
         //  temps = 5;
         ex_bot=(transform.getOrigin().x()-x_odom-xr_bot); // calcul del errror respecte la referencia funciona
         ey_bot=(transform.getOrigin().y()-y_odom-yr_bot);
-        //ez_bot=(zp-zr);
-        vy = controller(-ey_bot, &int_ey_bot, &ey_a,0.1,0,kd_bot,tsample);
-        vx = controller(-ex_bot, &int_ex_bot, &ex_a,0.1,0,kd_bot,tsample);
-        //vz = controller(ez_bot, &int_ez_bot, &ez_a,0.1,0,kd_bot,tsample);
+        ez_bot=(zp-zr);
+        vy = controller(-ey_bot, &int_ey_bot, &ey_a,0.01,0,kd_bot,tsample);
+        vx = controller(-ex_bot, &int_ex_bot, &ex_a,0.01,0,kd_bot,tsample);
+        vz = controller(ez_bot, &int_ez_bot, &ez_a,0.01,0,kd_bot,tsample);
         cmd_msg.linear.x=vx;
         cmd_msg.linear.y=vy;
         cmd_msg.linear.z=vz;
@@ -352,7 +352,7 @@ int main(int argc, char **argv)
             ex_front =(xp_front-yr_front);
             //ez_front =(-xp_front);
             ROS_INFO("Error: %f", ex_front);
-            vyaw = controller(ex_front, &int_ex_front, &ex_a,0.1,0,0,tsample);
+            vyaw = controller(ex_front, &int_ex_front, &ex_a,0.01,0,0,tsample);
             //vz = controller(ez_front, &int_ez_front, &ez_a,0.2,0,0,tsample);
 
             //cmd_msg.linear.z=vz;
