@@ -111,17 +111,13 @@ include_directories(
 
 
 ## Declare a cpp executable
-add_executable(simple_node src/simple_node.cpp)
+#add_executable(simple_node src/simple_node.cpp)
 
 #Publisher
-add_executable(simple_publisher src/simple_publisher.cpp)
-#add_executable(pub_land src/pub_land.cpp)
-#add_executable(pub_takeoff src/pub_takeoff.cpp)
 add_executable(Controller_node_marc src/Controller_node_marc.cpp)
 
-#add_executable(simple_subscriber src/simple_subscriber.cpp)
 
-add_dependencies(simple_node $simple_node_gencfg)
+add_dependencies(Controller_node_marc $Controller_node_marc_gencfg)
 
 
 ## Add cmake target dependencies of the executable/library
@@ -129,15 +125,11 @@ add_dependencies(simple_node $simple_node_gencfg)
 # add_dependencies(intro_ros_node intro_ros_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(simple_node ${catkin_LIBRARIES})
+#target_link_libraries(simple_node ${catkin_LIBRARIES})
 
 #Publisher
-target_link_libraries(simple_publisher ${catkin_LIBRARIES})
-#target_link_libraries(pub_land ${catkin_LIBRARIES})
-#target_link_libraries(pub_takeoff ${catkin_LIBRARIES})
 target_link_libraries(Controller_node_marc ${catkin_LIBRARIES})
 
-#target_link_libraries(simple_subscriber ${catkin_LIBRARIES})
 
 
 
