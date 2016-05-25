@@ -105,7 +105,7 @@ void chatterCallback(const ar_pose::ARMarkers::ConstPtr& msg)
 
   for(i=0;i<msg->markers.size();i++){
       ar_pose_marker = msg->markers.at(i);
-      if(ar_pose_marker.id==0){
+      if((ar_pose_marker.id==0) && (stateDrone!=7)){
         groundMarker_Found=1;
         idmarker = ar_pose_marker.id;
         // Position respect bottom marker
@@ -167,6 +167,7 @@ void navdataCallback(const ardrone_autonomy::Navdata msg)
 //0: Unknown, 1: Init, 2: Landed, 3: Flying, 4: Hovering, 5: Test
 //6: Taking off, 7: Goto Fix Point, 8: Landing, 9: Looping
 //Note: 3,7 seems to discriminate type of flying (isFly = 3 | 7)
+
 }
 //void transformPoint( const tf::TransformListener& listener){
 
@@ -287,9 +288,9 @@ int main(int argc, char **argv)
           //ez_bot=(zp-zr);
           //kp_bot=0.1;
           //ki_bot=0.01;
-          vx = controller(ey_bot, &int_ey_bot, &ey_a,0.01,0.0,kd_bot,tsample);
-          vy = controller(ex_bot, &int_ex_bot, &ex_a,0.01,0.0,kd_bot,tsample);
-          vz = controller(ez_bot, &int_ez_bot, &ez_a,0.01,0,kd_bot,tsample);
+          vx = controller(ey_bot, &int_ey_bot, &ey_a,0.07,0.0,kd_bot,tsample);
+          vy = controller(ex_bot, &int_ex_bot, &ex_a,0.07,0.0,kd_bot,tsample);
+          vz = controller(ez_bot, &int_ez_bot, &ez_a,0.07,0,kd_bot,tsample);
           //eyaw_bot=(yaw_bot-yawr_bot);
           //vyaw= controller(eyaw_bot, &int_eyaw, &eyaw_a, kp_yaw, ki_yaw, kd_yaw);
           cmd_msg.linear.x=vx;
@@ -300,7 +301,7 @@ int main(int argc, char **argv)
           vel_pub.publish(cmd_msg);
             if(wait==0)
             {
-              ROS_INFO("Error: %f", (ex_bot+ey_bot));
+              ROS_INFO("Error: %f", (ex_bot+ey_bot+ez_bot));
               if((fabs(ex_bot+ey_bot+ez_bot)<=0.01)&&(!idmarker))
               {
               wait = 1;
@@ -320,15 +321,15 @@ int main(int argc, char **argv)
             }
           break;
         case 2:
-        //  cmd_msg.linear.x=0;
-        //  cmd_msg.linear.y=0;
-        //  cmd_msg.linear.z=0;
-        //  vel_pub.publish(cmd_msg);
-        //  camera.call(camera_srv);
-        //  state=3;
-        //  ROS_INFO("Turning");
-        //  wait = 0;
-        //  temps = 5;
+        cmd_msg.linear.x=0;
+        cmd_msg.linear.y=0;
+        cmd_msg.linear.z=0;
+        vel_pub.publish(cmd_msg);
+        camera.call(camera_srv);
+        state=3;
+        ROS_INFO("Turning");
+        wait = 0;
+        temps = 5;
         ex_bot=(transform.getOrigin().x()-x_odom-xr_bot); // calcul del errror respecte la referencia funciona
         ey_bot=(transform.getOrigin().y()-y_odom-yr_bot);
         ez_bot=(zp-zr);
@@ -337,22 +338,21 @@ int main(int argc, char **argv)
         vz = controller(ez_bot, &int_ez_bot, &ez_a,0.01,0,kd_bot,tsample);
         cmd_msg.linear.x=vx;
         cmd_msg.linear.y=vy;
-        cmd_msg.linear.z=vz;
-        ROS_INFO("Error: %f %f %f", ex_bot, ey_bot, ez_bot);
-        ROS_INFO("Vel: %f %f %f", vx,vy,vz);
+        cmd_msg.linear.z=0;
+        //ROS_INFO("Error: %f %f %f", ex_bot, ey_bot, ez_bot);
+        //ROS_INFO("Vel: %f %f %f", vx,vy,vz);
         vel_pub.publish(cmd_msg);
-        break;
         case 3:
           if(found==0)
           {
-            cmd_msg.angular.z=0.5;
+            cmd_msg.angular.z=0.25;
             vel_pub.publish(cmd_msg);
 
           }else{
             ex_front =(xp_front-yr_front);
             //ez_front =(-xp_front);
             ROS_INFO("Error: %f", ex_front);
-            vyaw = controller(ex_front, &int_ex_front, &ex_a,0.01,0,0,tsample);
+            vyaw = controller(ex_front, &int_ex_front, &ex_a,0.1,0,0,tsample);
             //vz = controller(ez_front, &int_ez_front, &ez_a,0.2,0,0,tsample);
 
             //cmd_msg.linear.z=vz;
@@ -369,6 +369,17 @@ int main(int argc, char **argv)
         case 4:
         ez_front =(yp_front-0);
         ex_front =(0.2-zp_front);
+
+
+        //ex_bot=(transform.getOrigin().x()-x_odom-xr_bot);
+        //ey_bot=(transform.getOrigin().y()-y_odom-yr_bot);
+        //ez_bot=(zp-zr);
+
+
+        //vy = controller(-ey_bot, &int_ey_bot, &ey_a,0.01,0,kd_bot,tsample);
+        //vx = controller(-ex_bot, &int_ex_bot, &ex_a,0.01,0,kd_bot,tsample);
+
+
           if(fabs(ex_front)>1){
             ROS_INFO("Error: %f %f", ex_front, ez_front);
             vz = controller(ez_front, &int_ez_front, &ez_a,0.3,0,0,tsample);
