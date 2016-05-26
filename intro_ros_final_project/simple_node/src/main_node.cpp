@@ -367,8 +367,9 @@ int main(int argc, char **argv)
           }
           break;
         case 4:
-        ez_front =(yp_front-0);
-        ex_front =(0.2-zp_front);
+        //ez_front =(yp_front-0);
+        ey_front =(xp_front-0);
+        ez_front =(0.2-zp_front);
 
 
         //ex_bot=(transform.getOrigin().x()-x_odom-xr_bot);
@@ -383,18 +384,20 @@ int main(int argc, char **argv)
           if(fabs(ex_front)>1){
             //ROS_INFO("Error: %f %f", ex_front, ez_front);
             //vz = controller(ez_front, &int_ez_front, &ez_a,0.3,0,0,tsample);
-            vx = controller(ex_front, &int_ex_front, &ex_a,0.07,0,0,tsample);
-            cmd_msg.linear.x=vx;
+            vyaw = controller(ey_front, &int_ex_front, &ex_a,0.01,0,0,tsample);
+            vz = controller(ez_front, &int_ex_front, &ex_a,0.07,0,0,tsample);
+            cmd_msg.linear.x=vz;
             cmd_msg.linear.z=0;
-            cmd_msg.angular.z=0;
+            cmd_msg.angular.z=vyaw;
             vel_pub.publish(cmd_msg);
           }else{
             ez_front =(yp_front-0);
             ex_front =(1-zp_front);
             //vz = controller(ez_front, &int_ez_front, &ez_a,0.3,0,0,tsample);
-            vx = controller(ex_front, &int_ex_front, &ex_a,0.01,0,0,tsample);
-            cmd_msg.linear.x=vx;
-            cmd_msg.linear.z=0;
+            vyaw = controller(ey_front, &int_ex_front, &ex_a,0.01,0,0,tsample);
+            vz = controller(ez_front, &int_ex_front, &ex_a,0.01,0,0,tsample);
+            cmd_msg.linear.x=vz;
+            cmd_msg.linear.z=vyaw;
             vel_pub.publish(cmd_msg);
             if(wait==0)
             {
