@@ -137,23 +137,10 @@ void chatterCallback(const ar_pose::ARMarkers::ConstPtr& msg)
 
   }
 
-  //xp=msg.markers.pose.pose.position.x;
-  //yp=msg.markers.pose.pose.position.y;
-  //zp=msg.pose.pose.position.z;
-  //ROS_INFO("Orientacio %f %f %f",roll_bot,pitch_bot,yaw_bot);
-//  ROS_INFO("Pose: %f %f %d", //This is the marker floor position respect robot
-                            // cameracd
-  //xp_bot,yp_bot,ar_pose_marker.id);
-
-}
-
-void sonarCallback(const sensor_msgs::Range msg)
-{
-  //zp=msg.range;
 }
 
 
-void odomCallback(const nav_msgs::Odometry msg)
+void odomCallback(const nav_msgs::Odometry msg) //Odometry
 {
   xp_odom=msg.pose.pose.position.x;
   yp_odom=msg.pose.pose.position.y;
@@ -170,39 +157,6 @@ void navdataCallback(const ardrone_autonomy::Navdata msg)
 //Note: 3,7 seems to discriminate type of flying (isFly = 3 | 7)
 
 }
-//void transformPoint( const tf::TransformListener& listener){
-
-//geometry_msgs::PointStamped bot_cam_point;
-//bot_cam_point.header.frame_id = "ardrone_base_bottomcam";
-
-//bot_cam_point.header.stamp = ros::Time();
-
-//bot_cam_point.point.x=  0;
-//bot_cam_point.point.y=  0;
-//bot_cam_point.point.z=  0;
-
-
-//geometry_msgs::PointStamped base_point;
-
-//listener.transformPoint("base_link", bot_cam_point, base_point);
-
-//ROS_INFO("transformada: %f %f %f", base_point.point.x, base_point.point.y, base_point.point.z);
-
-//}
-
-// Funcio controlador de velocitat
-
-/*float controller(float error, float *integral, float *errora, float fkp, float fkd, float fki)
-  float velocitat;
-
-  *integral += *integral*tsample; // integracio
-
-  velocitat=-fkp*(error)-fki*(*integral)-fkd*(error-*errora)/tsample;
-
-  *errora = error;
-
-  return velocitat;
-}*/
 
 int main(int argc, char **argv)
 {
@@ -286,19 +240,15 @@ int main(int argc, char **argv)
           //Controlar i orientar i esperar 5 segons
           ex_bot=(xp_bot-xr_bot);
           ey_bot=(yp_bot-yr_bot);
-          //ez_bot=(zp-zr);
-          //kp_bot=0.1;
-          //ki_bot=0.01;
+      
           vx = controller(ey_bot, &int_ey_bot, &ey_a,0.07,0.0,kd_bot,tsample);
           vy = controller(ex_bot, &int_ex_bot, &ex_a,0.07,0.0,kd_bot,tsample);
           vz = controller(ez_bot, &int_ez_bot, &ez_a,0.07,0,kd_bot,tsample);
-          //eyaw_bot=(yaw_bot-yawr_bot);
-          //vyaw= controller(eyaw_bot, &int_eyaw, &eyaw_a, kp_yaw, ki_yaw, kd_yaw);
+ 
           cmd_msg.linear.x=vx;
           cmd_msg.linear.y=vy;
           cmd_msg.linear.z=vz;
-          //ROS_INFO("Error: %f %f %f", vx, vy, vz);
-          //cmd_msg.angular.z=vyaw;
+
           vel_pub.publish(cmd_msg);
             if(wait==0)
             {
@@ -331,8 +281,7 @@ int main(int argc, char **argv)
         ROS_INFO("Turning");
         wait = 0;
         temps = 0;
-        //ROS_INFO("Error: %f %f %f", ex_bot, ey_bot, ez_bot);
-        //ROS_INFO("Vel: %f %f %f", vx,vy,vz);
+
         vel_pub.publish(cmd_msg);
         case 3:
           ex_bot=(transform.getOrigin().x()-x_odom-xr_bot); // calcul del errror respecte la referencia funciona
@@ -355,11 +304,9 @@ int main(int argc, char **argv)
             //ez_front =(-xp_front);
             ROS_INFO("Error found: %f", ex_front);
             vyaw = controller(ex_front, &int_ex_front, &ex_a,0.1,0,0,tsample);
-            //vz = controller(ez_front, &int_ez_front, &ez_a,0.2,0,0,tsample);
-
-            //cmd_msg.linear.z=vz;
+         
             cmd_msg.angular.z=vyaw;
-            //ROS_INFO("Error %f", ex_front);
+          
             vel_pub.publish(cmd_msg);
             if(fabs(ex_front)<=0.1){
               state = 4;
@@ -371,17 +318,7 @@ int main(int argc, char **argv)
         case 4:
         //ez_front =(yp_front-0);
         ey_front =(xp_front-0);
-        ez_front =(0.5-zp_front);
-
-
-        //ex_bot=(transform.getOrigin().x()-x_odom-xr_bot);
-        //ey_bot=(transform.getOrigin().y()-y_odom-yr_bot);
-        //ez_bot=(zp-zr);
-
-
-        //vy = controller(-ey_bot, &int_ey_bot, &ey_a,0.01,0,kd_bot,tsample);
-        //vx = controller(-ex_bot, &int_ex_bot, &ex_a,0.01,0,kd_bot,tsample);
-
+        ez_front =(0.5-zp_front); // Error between marker and drone
 
           if(fabs(ez_front)>1){
             //ROS_INFO("Error: %f %f", ex_front, ez_front);
@@ -398,7 +335,6 @@ int main(int argc, char **argv)
           }else{
             ez_front =(yp_front-0);
             ex_front =(1-zp_front);
-            //vz = controller(ez_front, &int_ez_front, &ez_a,0.3,0,0,tsample);
             vyaw = controller(ey_front, &int_ex_front, &ex_a,0.01,0,0,tsample);
             vz = controller(ez_front, &int_ex_front, &ex_a,0.01,0,0,tsample);
             if(vz>0.05){
@@ -409,7 +345,6 @@ int main(int argc, char **argv)
 
             if(wait==0)
             {
-              //ROS_INFO("Error: %f", (ex_bot+ey_bot+ez_bot));
               wait = 1;
               begin = ros::Time::now().toSec();
               ROS_INFO("Final wait front");
@@ -439,12 +374,6 @@ int main(int argc, char **argv)
       //We have the control of the dron.
       if(cont_bot){
 
-        //listener.lookupTransform("/odom", "/ardrone_base_bottomcam",ros::Time(0), transform);
-        //Change topic image_raw between the two cameras.
-        //ex_bot=(transform.getOrigin().x()-xr_bot); // calcul del errror respecte la referencia funciona
-        //ey_bot=(transform.getOrigin().y()-yr_bot);
-        //ez_bot=(transform.getOrigin().z()-zr);
-
         ex_bot=(xp_bot-xr_bot);
         ey_bot=(yp_bot-yr_bot);
         ez_bot=(zp-zr);
@@ -453,23 +382,9 @@ int main(int argc, char **argv)
         vy = controller(ex_bot, &int_ex_bot, &ex_a,kp_bot,ki_bot,kd_bot,tsample);
         vz = controller(ez_bot, &int_ez_bot, &ez_a,kp_bot,ki_bot,kd_bot,tsample);
 
-        //control orientacio
-
-        //exo_bot=(xo_bot-xor_bot); // calcul del errror respecte la referencia funciona
-        //eyaw_bot=(yaw_bot-yawr_bot);
-
-        //ROS_INFO("Error: %f",eyaw_bot);
-        //ezo_bot=(zo_bot-zor_bot);
-
-        //vyaw= controller(eyaw_bot, &int_eyaw, &eyaw_a, kp_yaw, ki_yaw, kd_yaw);
-        //vay=-kp_bot*(ex_bot)-ki_bot*(int_ex_bot)-kd_bot*(ex_bot-ex_a)/0.1;
-        //vaz=-kp_bot*(ez_bot)-ki_bot*(int_ez_bot)-kd_bot*(ez_bot-ez_a)/0.1;
-
         cmd_msg.linear.x=vx; // Give to the drone the velocity in vx
         cmd_msg.linear.y=vy;
-        //cmd_msg.linear.z=vz;
-        //cmd_msg.angular.z=vyaw;
-        //ROS_INFO("Velocitat: %f",eyaw_bot);
+
         ROS_INFO("Error: %f %f %f", ex_bot, ey_bot, ez_bot);
         ROS_INFO("Vel: %f %f %f", vx,vy,vz);
         vel_pub.publish(cmd_msg);
