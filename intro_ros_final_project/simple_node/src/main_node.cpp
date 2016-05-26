@@ -330,7 +330,7 @@ int main(int argc, char **argv)
         state=3;
         ROS_INFO("Turning");
         wait = 0;
-        temps = 5;
+        temps = 0;
         //ROS_INFO("Error: %f %f %f", ex_bot, ey_bot, ez_bot);
         //ROS_INFO("Vel: %f %f %f", vx,vy,vz);
         vel_pub.publish(cmd_msg);
@@ -371,7 +371,7 @@ int main(int argc, char **argv)
         case 4:
         //ez_front =(yp_front-0);
         ey_front =(xp_front-0);
-        ez_front =(0.2-zp_front);
+        ez_front =(0.5-zp_front);
 
 
         //ex_bot=(transform.getOrigin().x()-x_odom-xr_bot);
@@ -383,24 +383,30 @@ int main(int argc, char **argv)
         //vx = controller(-ex_bot, &int_ex_bot, &ex_a,0.01,0,kd_bot,tsample);
 
 
-          if(fabs(ex_front)>1){
+          if(fabs(ez_front)>1){
             //ROS_INFO("Error: %f %f", ex_front, ez_front);
             //vz = controller(ez_front, &int_ez_front, &ez_a,0.3,0,0,tsample);
             vyaw = controller(ey_front, &int_ex_front, &ex_a,0.01,0,0,tsample);
-            vz = controller(ez_front, &int_ex_front, &ex_a,0.07,0,0,tsample);
+            vz = controller(ez_front, &int_ex_front, &ex_a,0.01,0,0,tsample);
+            if(vz>0.05){
+              vz = 0.05;
+            }
             cmd_msg.linear.x=vz;
             cmd_msg.linear.z=0;
             cmd_msg.angular.z=vyaw;
-            vel_pub.publish(cmd_msg);
+            ROS_INFO("Aproxing: %f", ez_front);
           }else{
             ez_front =(yp_front-0);
             ex_front =(1-zp_front);
             //vz = controller(ez_front, &int_ez_front, &ez_a,0.3,0,0,tsample);
             vyaw = controller(ey_front, &int_ex_front, &ex_a,0.01,0,0,tsample);
             vz = controller(ez_front, &int_ex_front, &ex_a,0.01,0,0,tsample);
+            if(vz>0.05){
+              vz = 0.05;
+            }
             cmd_msg.linear.x=vz;
             cmd_msg.linear.z=vyaw;
-            vel_pub.publish(cmd_msg);
+
             if(wait==0)
             {
               //ROS_INFO("Error: %f", (ex_bot+ey_bot+ez_bot));
@@ -408,6 +414,12 @@ int main(int argc, char **argv)
               begin = ros::Time::now().toSec();
               ROS_INFO("Final wait front");
             }else{
+              ROS_INFO("Stop");
+              cmd_msg.linear.x=0;
+              cmd_msg.linear.y=0;
+              cmd_msg.linear.z=0;
+              cmd_msg.angular.z=0;
+
               if(temps<=5){
                 temps = ros::Time::now().toSec() - begin;
                 ROS_INFO("Time passed %f", temps);
@@ -415,9 +427,12 @@ int main(int argc, char **argv)
                 state = 5;
               }
             }
+
           }
+          vel_pub.publish(cmd_msg);
           break;
           case 5:
+          ROS_INFO("Finished");
           land_pub.publish(msg);
     }
     }else{
