@@ -122,6 +122,7 @@ void chatterCallback(const ar_pose::ARMarkers::ConstPtr& msg)
         //ROS_INFO("Yaw %f",yaw_bot);
       }else if(ar_pose_marker.id==1){
         found = ar_pose_marker.id;
+        idmarker = ar_pose_marker.id;
         xp_front=ar_pose_marker.pose.pose.position.x;
         yp_front=ar_pose_marker.pose.pose.position.y;
         zp_front=ar_pose_marker.pose.pose.position.z;
@@ -347,11 +348,12 @@ int main(int argc, char **argv)
           {
             cmd_msg.angular.z=0.25;
             vel_pub.publish(cmd_msg);
+            ROS_INFO("Not found");
 
           }else{
             ex_front =(xp_front-yr_front);
             //ez_front =(-xp_front);
-            ROS_INFO("Error: %f", ex_front);
+            ROS_INFO("Error found: %f", ex_front);
             vyaw = controller(ex_front, &int_ex_front, &ex_a,0.1,0,0,tsample);
             //vz = controller(ez_front, &int_ez_front, &ez_a,0.2,0,0,tsample);
 
