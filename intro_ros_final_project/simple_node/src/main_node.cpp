@@ -330,19 +330,19 @@ int main(int argc, char **argv)
         ROS_INFO("Turning");
         wait = 0;
         temps = 5;
-        ex_bot=(transform.getOrigin().x()-x_odom-xr_bot); // calcul del errror respecte la referencia funciona
-        ey_bot=(transform.getOrigin().y()-y_odom-yr_bot);
-        ez_bot=(zp-zr);
-        vy = controller(-ey_bot, &int_ey_bot, &ey_a,0.01,0,kd_bot,tsample);
-        vx = controller(-ex_bot, &int_ex_bot, &ex_a,0.01,0,kd_bot,tsample);
-        vz = controller(ez_bot, &int_ez_bot, &ez_a,0.01,0,kd_bot,tsample);
-        cmd_msg.linear.x=vx;
-        cmd_msg.linear.y=vy;
-        cmd_msg.linear.z=0;
         //ROS_INFO("Error: %f %f %f", ex_bot, ey_bot, ez_bot);
         //ROS_INFO("Vel: %f %f %f", vx,vy,vz);
         vel_pub.publish(cmd_msg);
         case 3:
+          ex_bot=(transform.getOrigin().x()-x_odom-xr_bot); // calcul del errror respecte la referencia funciona
+          ey_bot=(transform.getOrigin().y()-y_odom-yr_bot);
+          ez_bot=(zp-zr);
+          vy = controller(-ey_bot, &int_ey_bot, &ey_a,0.01,0,kd_bot,tsample);
+          vx = controller(-ex_bot, &int_ex_bot, &ex_a,0.01,0,kd_bot,tsample);
+          vz = controller(ez_bot, &int_ez_bot, &ez_a,0.01,0,kd_bot,tsample);
+          cmd_msg.linear.x=vx;
+          cmd_msg.linear.y=vy;
+          cmd_msg.linear.z=0;
           if(found==0)
           {
             cmd_msg.angular.z=0.25;
@@ -381,20 +381,20 @@ int main(int argc, char **argv)
 
 
           if(fabs(ex_front)>1){
-            ROS_INFO("Error: %f %f", ex_front, ez_front);
-            vz = controller(ez_front, &int_ez_front, &ez_a,0.3,0,0,tsample);
-            vx = controller(ex_front, &int_ex_front, &ex_a,0.2,0,0,tsample);
+            //ROS_INFO("Error: %f %f", ex_front, ez_front);
+            //vz = controller(ez_front, &int_ez_front, &ez_a,0.3,0,0,tsample);
+            vx = controller(ex_front, &int_ex_front, &ex_a,0.07,0,0,tsample);
             cmd_msg.linear.x=vx;
-            cmd_msg.linear.z=vz;
+            cmd_msg.linear.z=0;
             cmd_msg.angular.z=0;
             vel_pub.publish(cmd_msg);
           }else{
             ez_front =(yp_front-0);
             ex_front =(1-zp_front);
-            vz = controller(ez_front, &int_ez_front, &ez_a,0.3,0,0,tsample);
-            vx = controller(ex_front, &int_ex_front, &ex_a,0.2,0,0,tsample);
+            //vz = controller(ez_front, &int_ez_front, &ez_a,0.3,0,0,tsample);
+            vx = controller(ex_front, &int_ex_front, &ex_a,0.01,0,0,tsample);
             cmd_msg.linear.x=vx;
-            cmd_msg.linear.z=vz;
+            cmd_msg.linear.z=0;
             vel_pub.publish(cmd_msg);
             if(wait==0)
             {
